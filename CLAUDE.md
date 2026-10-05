@@ -50,3 +50,11 @@ py -m http.server 8000                  # http://localhost:8000 에서 미리보
 - 글꼴: 제목 Hahmlet, 본문 IBM Plex Sans KR, 숫자·메타 IBM Plex Mono (Google Fonts).
 - 그리드는 JS가 방마다 행을 나눠 모든 행을 가로폭에 꽉 맞춘다 (동적 계획법으로 목표 높이에 가장 가깝게). 사진은 잘리지 않고 원래 비율을 유지한다.
 - 크게 보기: 방향키, 스와이프, Esc, 사진 바깥 클릭으로 닫기. 처음엔 썸네일을 보여주고 원본이 받아지면 바꾼다.
+
+## 배포
+
+- 저장소: https://github.com/HPotty36/across-gallery (공개)
+- 사이트: https://hpotty36.github.io/across-gallery/
+- GitHub Pages가 `main` 브랜치 루트를 그대로 서빙한다. `py scripts\build.py`로 `index.html`을 다시 만든 뒤 커밋하고 `git push`하면 1분 안팎으로 반영된다.
+- `.nojekyll`이 있어야 파일이 가공 없이 올라간다. 지우지 말 것.
+- 저장소가 공개라서 올린 파일은 누구나 볼 수 있다. 원본 사진(`originals/`)은 `.gitignore`로 제외되어 있다.
