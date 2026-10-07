@@ -1,0 +1,51 @@
+{
+  "site": {
+    "title": "Nocturne",
+    "lede": "사진 {total}점",
+    "description": "사진 {total}점",
+    "copyright": "© 2026 Nocturne"
+  },
+  "cover": "a1",
+  "rooms": [
+    {
+      "id": "river",
+      "name": "강",
+      "name_en": "River",
+      "note": "물가에서 바라본 도시",
+      "photos": [
+        {
+          "file": "a1",
+          "title": "스카이라인",
+          "alt": "강 건너 빌딩"
+        },
+        {
+          "file": "a2",
+          "title": "다리 아래",
+          "alt": "다리 상판",
+          "ai": {
+            "model": "gemma4:e4b-it-qat",
+            "fields": [
+              "title",
+              "alt"
+            ],
+            "confidence": 0.61
+          }
+        }
+      ]
+    },
+    {
+      "id": "night",
+      "name": "밤",
+      "name_en": "Night",
+      "note": "가로등 아래",
+      "photos": [
+        {
+          "file": "n1",
+          "title": "공중전화",
+          "alt": "빨간 공중전화 부스",
+          "date": "2025.11.30"
+        }
+      ]
+    }
+  ]
+}

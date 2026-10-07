@@ -1,0 +1,113 @@
+name: Draft
+
+# GitHub 대타: PC가 60초 안에 맡지 않은 대기열 사진을 작은 모델로 초안 쓰고 게시한다.
+on:
+  push:
+    branches: [main]
+    paths: ['queue/**']
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  draft:
+    # 작업이 if로 건너뛰어지면 아래 concurrency 자리를 차지하지 않는다 (PC가 맡는 커밋마다 push가 온다)
+    if: github.event_name != 'push' || contains(github.event.head_commit.message, '올림') || contains(github.event.head_commit.message, '다시 시도')
+    concurrency:
+      group: draft
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # 쓰기 권한이 있는 토큰은 worker 단계에만 준다 (내려받은 Ollama가 도는 단계에는 없다)
+    env:
+      NOCTURNE_MODEL: gemma4:e4b-it-qat
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - run: pip install -r requirements.txt
+
+      - name: PC가 먼저 맡을 시간 주기
+        if: github.event_name == 'push'
+        run: sleep 60
+
+      - name: 맡을 사진 찾기
+        id: check
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python scripts/worker.py --by github --check
+
+      - name: Ollama v0.35.1 내려받기
+        if: steps.check.outputs.names != ''
+        env:
+          # v0.35.1 릴리스의 sha256sum.txt에 적힌 ollama-linux-amd64.tar.zst 값
+          OLLAMA_SHA256: 9fcd79ac4575b2bd31b992eee18b1000c8ad126b451627c8f8cd091714cfbb10
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/ollama"
+          mkdir -p "$dir"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/ollama.tar.zst" \
+            https://github.com/ollama/ollama/releases/download/v0.35.1/ollama-linux-amd64.tar.zst
+          echo "$OLLAMA_SHA256  $RUNNER_TEMP/ollama.tar.zst" | sha256sum -c -
+          tar --zstd -xf "$RUNNER_TEMP/ollama.tar.zst" -C "$dir"
+          "$dir/bin/ollama" --version
+          echo "$dir/bin" >> "$GITHUB_PATH"
+          # runner 값은 job 수준 env에서 쓸 수 없어서 여기서 정한다 (아래 단계들이 이어받는다)
+          echo "OLLAMA_MODELS=$RUNNER_TEMP/ollama-models" >> "$GITHUB_ENV"
+
+      - name: 모델 폴더 캐시 불러오기
+        id: cache
+        if: steps.check.outputs.names != ''
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ env.OLLAMA_MODELS }}
+          key: ollama-gemma4-e4b-it-qat
+
+      - name: Ollama 서버 켜기
+        if: steps.check.outputs.names != ''
+        run: |
+          nohup ollama serve > "$RUNNER_TEMP/ollama.log" 2>&1 &
+          for _ in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:11434/api/version > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Ollama 서버가 60초 안에 켜지지 않았어요" >&2
+          cat "$RUNNER_TEMP/ollama.log" >&2
+          exit 1
+
+      - name: 모델 내려받기
+        if: steps.check.outputs.names != ''
+        run: ollama pull gemma4:e4b-it-qat
+
+      # 받는 데 성공하면 뒤 단계가 실패해도 모델이 남도록 바로 저장한다
+      - name: 모델 폴더 캐시 저장
+        if: steps.check.outputs.names != '' && steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ env.OLLAMA_MODELS }}
+          key: ollama-gemma4-e4b-it-qat
+
+      - name: 초안 쓰고 게시
+        id: run
+        if: steps.check.outputs.names != ''
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python scripts/worker.py --by github --run
+
+      # GITHUB_TOKEN으로 만든 push는 다른 워크플로를 시작하지 않으므로 직접 부른다
+      - name: 사이트 다시 만들기
+        if: ${{ !cancelled() && steps.run.outputs.published != '' && steps.run.outputs.published != '0' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run site.yml --ref main

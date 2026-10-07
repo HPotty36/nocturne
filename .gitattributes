@@ -1,0 +1,3 @@
+tests/fixtures/*.json text eol=lf
+tests/cases.json text eol=lf
+src/photos.json text eol=lf

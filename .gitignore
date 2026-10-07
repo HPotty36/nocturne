@@ -2,3 +2,6 @@ originals/
 __pycache__/
 .DS_Store
 Thumbs.db
+/index.html
+_site/
+tests/browser/out/

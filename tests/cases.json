@@ -1,0 +1,17 @@
+{
+  "names": [
+    ["IMG_0306_Edited.jpeg", "0306"], ["20251116_185930798.jpg", "20251116_185930798"],
+    ["KakaoTalk_20251130_123456789.JPG", "kakaotalk_20251130_123456789"], ["카톡 사진 1.jpg", "1"],
+    ["사진.png", "photo"], ["image.jpg", "image"], ["my photo (1).jpeg", "my_photo_1"],
+    ["IMG_E1234.HEIC.jpg", "e1234_heic"]
+  ],
+  "grayscale": [
+    {"base": [128,128,128], "count": 100, "spots": [], "expect": true},
+    {"base": [128,128,128], "count": 100, "spots": [{"rgb": [255,0,0], "n": 1}], "expect": true},
+    {"base": [128,128,128], "count": 100, "spots": [{"rgb": [255,0,0], "n": 2}], "expect": false},
+    {"base": [130,128,126], "count": 100, "spots": [], "expect": false},
+    {"base": [129,128,127], "count": 100, "spots": [], "expect": true},
+    {"base": [128,128,128], "count": 100, "spots": [{"rgb": [135,128,120], "n": 10}], "expect": true},
+    {"base": [128,128,128], "count": 100, "spots": [{"rgb": [136,128,120], "n": 10}], "expect": false}
+  ]
+}

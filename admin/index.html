@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src https://api.github.com http://127.0.0.1:*; base-uri 'none'; form-action 'none'">
+<meta name="robots" content="noindex">
+<title>Nocturne 관리</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,400&family=Noto+Serif+KR:wght@400&family=IBM+Plex+Sans+KR:wght@400;500&display=swap">
+<link rel="stylesheet" href="admin.css">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+
+<header class="bar">
+  <div class="bar-in">
+    <h1 class="brand"><a class="mark" href="../">Nocturne</a><span class="brand-sub">관리</span></h1>
+    <button class="btn btn-quiet" id="logout" type="button" hidden>로그아웃</button>
+  </div>
+</header>
+
+<main class="page">
+  <p class="msg" id="boot">불러오는 중…</p>
+
+  <!-- first time on this device: the token and a lock passphrase -->
+  <section class="gate" id="setup" aria-labelledby="setup-title" hidden>
+    <h2 class="gate-title" id="setup-title">처음 설정</h2>
+    <p class="gate-note">GitHub 토큰은 잠금 비밀번호로 암호화해 이 기기에만 저장해요. 다음부터는 잠금 비밀번호만 넣으면 돼요.</p>
+    <form class="gate-form" id="setup-form" novalidate>
+      <div class="field">
+        <label for="setup-token">GitHub 토큰</label>
+        <textarea class="token-field" id="setup-token" rows="2" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" required></textarea>
+      </div>
+      <div class="field">
+        <label for="setup-pass">잠금 비밀번호</label>
+        <input id="setup-pass" type="password" autocomplete="new-password" minlength="8" required aria-describedby="setup-pass-hint">
+        <p class="hint" id="setup-pass-hint">8자 이상</p>
+      </div>
+      <div class="field">
+        <label for="setup-pass2">잠금 비밀번호 확인</label>
+        <input id="setup-pass2" type="password" autocomplete="new-password" minlength="8" required>
+      </div>
+      <button class="btn btn-main" id="setup-submit" type="submit">저장하고 열기</button>
+      <p class="msg" id="setup-msg" role="status" aria-live="polite"></p>
+    </form>
+  </section>
+
+  <!-- later visits: the lock passphrase only -->
+  <section class="gate" id="unlock" aria-labelledby="unlock-title" hidden>
+    <h2 class="gate-title" id="unlock-title">잠금 해제</h2>
+    <form class="gate-form" id="unlock-form" novalidate>
+      <div class="field">
+        <label for="unlock-pass">잠금 비밀번호</label>
+        <input id="unlock-pass" type="password" autocomplete="current-password" required>
+      </div>
+      <button class="btn btn-main" id="unlock-submit" type="submit">열기</button>
+      <p class="msg" id="unlock-msg" role="status" aria-live="polite"></p>
+    </form>
+    <p class="gate-alt"><button class="btn btn-link" id="unlock-reset" type="button">토큰 다시 넣기</button></p>
+  </section>
+
+  <!-- unlocked -->
+  <section class="desk" id="desk" aria-label="관리" hidden>
+    <p class="site-status" id="site-status" role="status" aria-live="polite" hidden>
+      <span class="site-dot" aria-hidden="true"></span><span id="site-status-text"></span>
+      <a id="site-status-link" target="_blank" rel="noopener noreferrer" hidden>자세히 보기</a>
+    </p>
+    <div class="tabs" role="tablist" aria-label="관리 화면">
+      <button class="tab" id="tab-new" type="button" role="tab" aria-selected="true" aria-controls="panel-new">새 사진</button>
+      <button class="tab" id="tab-exhibit" type="button" role="tab" aria-selected="false" aria-controls="panel-exhibit" tabindex="-1">전시 중</button>
+    </div>
+    <div class="panel" id="panel-new" role="tabpanel" aria-labelledby="tab-new"></div>
+    <div class="panel" id="panel-exhibit" role="tabpanel" aria-labelledby="tab-exhibit" hidden></div>
+  </section>
+</main>
+
+</body>
+</html>

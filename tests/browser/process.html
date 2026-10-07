@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>image.js check</title>
+<style>
+  body { font: 14px/1.5 ui-monospace, Consolas, monospace; margin: 16px; }
+  #status { white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<!--
+  Browser check for admin/lib/image.js. Local use only (the script refuses any other host).
+  Start the server:   py tests\browser\serve.py --port 8000
+  Make the inputs:    py tests\browser\make_inputs.py
+  Open:               http://127.0.0.1:8000/tests/browser/process.html?inputs=out/rot_gps.jpg,out/gray.jpg
+  The <img> fallback: the same with &fallback=1 (createImageBitmap then rejects 'from-image' as an older WebKit may)
+  Wait for window.done; the results are saved as tests/browser/out/results.json (window.results has them too).
+  Check them:         py tests\browser\check_output.py
+-->
+<p id="status">starting...</p>
+<script type="module" src="process.js"></script>
+</body>
+</html>

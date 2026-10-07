@@ -7,287 +7,343 @@
 <title>__TITLE__</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@300;500&family=IBM+Plex+Mono:wght@400&family=IBM+Plex+Sans+KR:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,400&family=Noto+Serif+KR:wght@400&family=IBM+Plex+Sans+KR:wght@400;500&display=swap">
 <style>
-/* Layout: an exhibition wall. A thin oversized name, one wide cover print, then four rooms
-   where every print hangs at its own ratio in justified rows. Night-first palette with a
-   sodium-lamp amber used only for focus and the active room. */
+/* Nocturne: a dark exhibition room. A thin bar with the name and the room index, one wide
+   cover print with its wall label, then rooms whose prints hang at their own ratios in
+   justified rows, each with a small label underneath. Lamp amber marks only focus and the
+   room in view. The light theme ("white wall") swaps the same colour tokens. */
 :root {
   color-scheme: dark;
-  --ground: #0d1013;
-  --wall: #161a1e;
-  --ink: #e7e4dd;
-  --ink-dim: #8e949a;
-  --rule: #272c32;
+  --ground: #141312;
+  --wall: #1c1a18;
+  --ink: #e9e4da;
+  --ink-dim: #8f8a82;
+  --rule: #2b2926;
   --lamp: #d9a759;
 
-  /* the viewing room and photo overlays stay dark in both themes */
-  --lb-ground: #07080a;
-  --lb-ink: #ece9e2;
-  --lb-dim: #8e949a;
-  --lb-btn: #1b1f24;
-  --lb-btn-hover: #2a3037;
-  --on-photo: #f2efe8;
-  --scrim: rgba(6, 8, 10, 0.62);
-
-  --f-display: "Hahmlet", "Nanum Myeongjo", "AppleMyungjo", "Batang", Georgia, serif;
-  --f-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
-  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-
-  --gutter: clamp(16px, 4vw, 56px);
-  --hang-gap: 10px;
+  /* the viewing room stays dark in both themes */
+  --lb-ground: #0c0b0a;
+  --lb-ink: #e9e4da;
+  --lb-dim: #8f8a82;
+  --lb-line: #3a3632;
+  --lb-hover: #22201d;
+  --lb-lamp: #d9a759;
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
     color-scheme: light;
-    --ground: #e7e9e8;
-    --wall: #dcdfdf;
-    --ink: #14171a;
-    --ink-dim: #575e65;
-    --rule: #c5c9cb;
-    --lamp: #7d520f;
+    --ground: #f4f2ee;
+    --wall: #e8e5df;
+    --ink: #1a1917;
+    --ink-dim: #6b665f;
+    --rule: #d9d5ce;
+    --lamp: #8a5a12;
   }
 }
 :root[data-theme="light"] {
   color-scheme: light;
-  --ground: #e7e9e8;
-  --wall: #dcdfdf;
-  --ink: #14171a;
-  --ink-dim: #575e65;
-  --rule: #c5c9cb;
-  --lamp: #7d520f;
+  --ground: #f4f2ee;
+  --wall: #e8e5df;
+  --ink: #1a1917;
+  --ink-dim: #6b665f;
+  --rule: #d9d5ce;
+  --lamp: #8a5a12;
 }
 
+/* type and space */
+:root {
+  --f-mark: "Cormorant Garamond", "Cormorant", Garamond, "Times New Roman", serif;
+  --f-serif: "Noto Serif KR", "Nanum Myeongjo", "AppleMyungjo", "Batang", serif;
+  --f-sans: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+
+  --page: 1440px;
+  --gutter: clamp(16px, 4vw, 56px);
+  --bar-h: 56px;
+  --hang-gap: clamp(14px, 2vw, 24px);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scrollbar-gutter: stable; }
 @media (prefers-reduced-motion: no-preference) {
   html { scroll-behavior: smooth; }
 }
-html.lb-open { overflow: hidden; }
-
-/* base reset (the artifact host adds the same rules; kept here so the page stands alone) */
-:root {
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-img { max-width: 100%; }
+html.lb-open { overflow: hidden; background: var(--lb-ground); }  /* dark under the kept scrollbar gutter too */
 [hidden] { display: none !important; }
 
 body {
   margin: 0;
   background: var(--ground);
   color: var(--ink);
-  font-family: var(--f-body);
+  font-family: var(--f-sans);
   font-size: 15px;
   line-height: 1.6;
+  word-break: keep-all;  /* break Korean between words, not syllables */
+  overflow-wrap: break-word;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
-
-.page {
-  max-width: 1440px;
-  margin: 0 auto;
-  padding-inline: var(--gutter);
-  padding-block: clamp(28px, 5vw, 64px) 40px;
-}
-
 a { color: inherit; }
+img { max-width: 100%; }
+button { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--lamp); outline-offset: 3px; }
 
-/* ---------- masthead ---------- */
-.mast { display: grid; gap: 18px; }
-.mast-kicker {
-  margin: 0;
-  font-family: var(--f-mono);
-  font-size: 12px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--ink-dim);
+/* ---------- top bar ---------- */
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding-top: env(safe-area-inset-top, 0px);
+  background: var(--ground);
+  border-bottom: 1px solid var(--rule);
 }
-.mast-name {
-  margin: 0;
-  font-family: var(--f-display);
-  font-weight: 300;
-  font-size: clamp(60px, 14vw, 188px);
-  line-height: 0.88;
-  letter-spacing: -0.02em;
-  text-wrap: balance;
+.bar-in {
+  max-width: var(--page);
+  height: var(--bar-h);
+  margin: 0 auto;
+  padding-inline: var(--gutter);
+  display: flex;
+  align-items: center;
+  gap: 28px;
 }
-.mast-foot {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 16px 40px;
-  padding-top: 16px;
-  border-top: 1px solid var(--rule);
+.bar h1 { margin: 0; flex: none; font: inherit; }
+.mark {
+  display: block;
+  font-family: var(--f-mark);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: 0.005em;
+  text-decoration: none;
+  padding-block: 4px 6px;
 }
-.mast-lede { margin: 0; max-width: 44ch; color: var(--ink-dim); }
-.mast-rooms { display: flex; flex-wrap: wrap; gap: 6px 26px; }
-.mast-rooms a {
+.bar-rooms {
+  display: flex;
+  gap: clamp(18px, 2.4vw, 34px);
+  min-width: 0;
+  margin-left: auto;
+  overflow-x: auto;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+.bar-rooms::-webkit-scrollbar { display: none; }
+.bar-rooms a {
+  flex: none;
   display: inline-flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 7px;
+  padding-block: 12px;
+  font-family: var(--f-serif);
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: nowrap;
   text-decoration: none;
-  font-family: var(--f-display);
-  font-weight: 500;
-  font-size: 19px;
-  line-height: 1.3;
-  transition: color 0.2s;
-}
-.mast-rooms a .n {
-  font-family: var(--f-mono);
-  font-size: 11px;
   color: var(--ink-dim);
-  font-variant-numeric: tabular-nums;
+  transition: color 0.2s ease;
 }
-.mast-rooms a:hover, .mast-rooms a.is-here { color: var(--lamp); }
+.bar-rooms .num {
+  font-family: var(--f-mark);
+  font-style: italic;
+  font-size: 16px;
+}
+.bar-rooms a:hover { color: var(--ink); }
+.bar-rooms a.is-here { color: var(--lamp); }
+.bar-rooms a:focus-visible { outline-offset: -2px; }
 
-/* ---------- cover print ---------- */
-.cover { margin: clamp(28px, 4.5vw, 56px) 0 0; }
+/* ---------- page ---------- */
+.page {
+  max-width: var(--page);
+  margin: 0 auto;
+  padding-inline: var(--gutter);
+  container-type: inline-size;
+}
+
+/* the cover hangs as wide as the page, but never taller than the first screen */
+.cover {
+  width: fit-content;
+  max-width: 100%;
+  margin: clamp(28px, 4vw, 48px) auto 0;
+}
 .cover-btn {
   display: block;
   width: 100%;
-  max-width: 100%;
   padding: 0;
   border: 0;
   cursor: zoom-in;
   background: var(--c, var(--wall));
 }
+@supports (width: 1cqi) {
+  .cover-btn { width: min(100cqi, (100svh - var(--bar-h) - 8rem) * var(--r)); }
+}
 .cover-btn img { display: block; width: 100%; height: auto; }
-.cover figcaption, .wall-label {
+
+/* wall labels: title left, date (and camera on the cover) right */
+.label {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  gap: 4px 16px;
-  padding-top: 10px;
+  align-items: baseline;
+  gap: 0 12px;
+  padding-top: 9px;
 }
-.label-title { font-family: var(--f-display); font-size: 15px; }
+.label-title {
+  font-family: var(--f-serif);
+  font-size: 13px;
+  line-height: 1.5;
+}
 .label-meta {
-  font-family: var(--f-mono);
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
   color: var(--ink-dim);
   font-variant-numeric: tabular-nums;
 }
+.cover .label { padding-top: 12px; gap: 0 20px; }
+.cover .label-title { font-size: 14px; }
+.cover .label-meta { font-size: 12px; }
+
+.lede {
+  max-width: 46ch;
+  margin: clamp(36px, 5vw, 64px) 0 0;
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--ink-dim);
+  text-wrap: pretty;
+}
 
 /* ---------- rooms ---------- */
-.room { margin-top: clamp(64px, 9vw, 120px); scroll-margin-top: 24px; }
+.room {
+  margin-top: clamp(64px, 9vw, 128px);
+  padding-top: clamp(16px, 2vw, 28px);
+  scroll-margin-top: calc(var(--bar-h) + env(safe-area-inset-top, 0px));
+}
 .room-head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) auto;
-  grid-template-areas: "title note count";
+  grid-template-columns: 3.25rem minmax(0, 1fr) auto;
+  grid-template-areas: "num title count" ". note note";
   align-items: baseline;
-  gap: 8px 32px;
-  padding-top: 14px;
-  margin-bottom: 22px;
+  gap: 6px 0;
+  padding-top: clamp(16px, 1.8vw, 22px);
+  margin-bottom: clamp(24px, 3vw, 40px);
   border-top: 1px solid var(--rule);
+}
+.room-num {
+  grid-area: num;
+  font-family: var(--f-mark);
+  font-style: italic;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--ink-dim);
 }
 .room-head h2 {
   grid-area: title;
-  margin: 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 12px;
-  font-family: var(--f-display);
-  font-weight: 500;
-  font-size: clamp(28px, 3.4vw, 42px);
-  line-height: 1.1;
-  text-wrap: balance;
+  gap: 2px 16px;
+  margin: 0;
+  font-family: var(--f-serif);
+  font-weight: 400;
+  font-size: clamp(24px, 2.6vw, 32px);
+  line-height: 1.25;
 }
 .room-en {
-  font-family: var(--f-mono);
-  font-weight: 400;
-  font-size: 11px;
-  letter-spacing: 0.16em;
+  font-family: var(--f-mark);
+  font-style: italic;
+  font-size: 15px;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--ink-dim);
 }
-.room-note { grid-area: note; margin: 0; max-width: 46ch; color: var(--ink-dim); min-width: 0; }
 .room-count {
   grid-area: count;
-  margin: 0;
-  font-family: var(--f-mono);
+  margin: 0 0 0 16px;
   font-size: 12px;
   color: var(--ink-dim);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+.room-note {
+  grid-area: note;
+  max-width: 46ch;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--ink-dim);
+  text-wrap: pretty;
+}
 
-/* justified hang: JS sets each print's width and height; the fallback is a fixed-height row */
-.hang { display: flex; flex-wrap: wrap; gap: var(--hang-gap); }
+/* justified hang: JS sets each print's width and its photo's height (then adds .is-laid);
+   without JS every photo stands at a fixed height in its own ratio */
+.hang {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--hang-gap);
+}
 .print {
-  position: relative;
-  display: block;
   flex: 0 0 auto;
-  height: 240px;
-  aspect-ratio: var(--r);
+  min-width: 0;
   max-width: 100%;
+  margin: 0;
+}
+.print-btn {
+  display: block;
+  max-width: 100%;
+  height: 220px;
+  aspect-ratio: var(--r);
   padding: 0;
   border: 0;
-  overflow: hidden;
   cursor: zoom-in;
   background: var(--c, var(--wall));
-  font: inherit;
-  color: inherit;
+  scroll-margin-block: calc(var(--bar-h) + var(--hang-gap)) var(--hang-gap);
 }
-.print img {
+.hang.is-laid .print-btn { width: 100%; aspect-ratio: auto; }
+.print-btn img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.cover-btn img, .print img { transition: opacity 0.6s ease; }
+.print-btn img, .cover-btn img { transition: opacity 0.6s ease; }
 .is-loading img { opacity: 0; }
-.print-cap {
-  position: absolute;
-  inset: auto 0 0 0;
-  padding: 28px 12px 10px;
-  text-align: left;
-  font-family: var(--f-display);
-  font-size: 14px;
-  color: var(--on-photo);
-  background: linear-gradient(to bottom, transparent, var(--scrim));
-  opacity: 0;
-  transition: opacity 0.25s ease;
-  pointer-events: none;
-}
-@media (hover: hover) {
-  .print:hover .print-cap { opacity: 1; }
-}
-.print:focus-visible .print-cap { opacity: 1; }
-.print:focus-visible { outline-offset: 3px; }
 
 /* ---------- footer ---------- */
 .foot {
-  margin-top: clamp(64px, 9vw, 120px);
-  padding-top: 14px;
-  border-top: 1px solid var(--rule);
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  gap: 6px 20px;
-  font-family: var(--f-mono);
+  gap: 4px 24px;
+  margin-top: clamp(96px, 12vw, 160px);
+  padding: 16px 0 calc(32px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--rule);
   font-size: 12px;
   color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
 }
 .foot p { margin: 0; }
 
-/* ---------- viewing room (lightbox) ---------- */
+/* ---------- viewing room ---------- */
 .lb {
   position: fixed;
   inset: 0;
   z-index: 50;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 10px;
+  gap: 12px;
   padding:
-    calc(env(safe-area-inset-top, 0px) + 10px)
-    clamp(10px, 2vw, 24px)
-    calc(env(safe-area-inset-bottom, 0px) + 14px);
+    calc(env(safe-area-inset-top, 0px) + 12px)
+    clamp(12px, 2vw, 28px)
+    calc(env(safe-area-inset-bottom, 0px) + 16px);
   background: var(--lb-ground);
   color: var(--lb-ink);
 }
+.lb :focus-visible { outline-color: var(--lb-lamp); }
 .lb-top { display: flex; justify-content: space-between; align-items: center; }
 .lb-count {
-  font-family: var(--f-mono);
   font-size: 12px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   color: var(--lb-dim);
   font-variant-numeric: tabular-nums;
 }
@@ -301,33 +357,31 @@ a { color: inherit; }
 .lb-img {
   position: absolute;
   inset: 0;
-  margin: auto;
   display: block;
   max-width: 100%;
   max-height: 100%;
   width: auto;
   height: auto;
+  margin: auto;
   object-fit: contain;
   transition: opacity 0.18s ease;
   -webkit-user-drag: none;
 }
-.lb-img.is-swapping { opacity: 0.25; }
 .lb-bar {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
 }
-.lb-caption { text-align: center; min-width: 0; }
+.lb-caption { min-width: 0; text-align: center; }
 .lb-title {
   margin: 0;
-  font-family: var(--f-display);
-  font-size: 18px;
-  line-height: 1.35;
+  font-family: var(--f-serif);
+  font-size: 17px;
+  line-height: 1.4;
 }
 .lb-meta {
-  margin: 2px 0 0;
-  font-family: var(--f-mono);
+  margin: 4px 0 0;
   font-size: 12px;
   color: var(--lb-dim);
   font-variant-numeric: tabular-nums;
@@ -338,68 +392,66 @@ a { color: inherit; }
   display: grid;
   place-items: center;
   padding: 0;
-  border: 0;
+  border: 1px solid var(--lb-line);
   border-radius: 50%;
-  background: var(--lb-btn);
+  background: transparent;
   color: var(--lb-ink);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background-color 0.15s ease;
 }
-.lb-btn:hover { background: var(--lb-btn-hover); }
+.lb-btn:hover { background: var(--lb-hover); }
 .lb-btn svg { width: 18px; height: 18px; }
 
-.sr-only {
-  position: absolute;
-  width: 1px; height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
-
-@media (max-width: 760px) {
-  :root { --hang-gap: 6px; }
-  .mast-foot { grid-template-columns: minmax(0, 1fr); }
-  .room-head {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "title count" "note note";
+@media (max-width: 719px) {
+  :root { --bar-h: 50px; }
+  .mark { font-size: 23px; }
+  .bar-in { gap: 8px; }
+  /* the index may slide sideways: let it run to the screen edge and fade where it is cut */
+  .bar-rooms {
+    margin-right: calc(-1 * var(--gutter));
+    padding-inline: 12px var(--gutter);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 12px, black calc(100% - var(--gutter)), transparent);
+    mask-image: linear-gradient(to right, transparent, black 12px, black calc(100% - var(--gutter)), transparent);
   }
+  .bar-rooms a { font-size: 13px; }
+  .room-head { grid-template-columns: 2.25rem minmax(0, 1fr) auto; }
+  .room-num { font-size: 19px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cover-btn img, .print img, .print-cap, .lb-img, .mast-rooms a { transition: none; }
+  .bar-rooms a, .print-btn img, .cover-btn img, .lb-img, .lb-btn { transition: none; }
 }
 </style>
 </head>
 <body>
 
-<div class="page">
-  <header class="mast">
-    <p class="mast-kicker">__KICKER__</p>
-    <h1 class="mast-name">__TITLE__</h1>
-    <div class="mast-foot">
-      <p class="mast-lede">__LEDE__</p>
-      <nav class="mast-rooms" aria-label="전시실">
+<header class="bar">
+  <div class="bar-in">
+    <h1><a class="mark" href="#top">__TITLE__</a></h1>
+    <nav class="bar-rooms" aria-label="전시실">
 __NAV__
-      </nav>
-    </div>
-  </header>
+    </nav>
+  </div>
+</header>
 
+<div class="page">
+<main>
 __COVER__
+  <p class="lede">__LEDE__</p>
 
-  <main>
 __ROOMS__
-  </main>
+</main>
 
-  <footer class="foot">
-    <p>__COPYRIGHT__</p>
-    <p>사진 __TOTAL__점 · 사진을 누르면 크게 볼 수 있어요</p>
-  </footer>
+<footer class="foot">
+  <p>__COPYRIGHT__</p>
+  <p>사진 __TOTAL__점 · 사진을 누르면 크게 볼 수 있어요</p>
+</footer>
 </div>
 
 <div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="사진 크게 보기" hidden>
   <div class="lb-top">
-    <span class="lb-count" id="lb-count">01 / 20</span>
+    <span class="lb-count" id="lb-count"></span>
     <button class="lb-btn" id="lb-close" type="button" aria-label="닫기">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
   </div>
   <div class="lb-stage" id="lb-stage">
@@ -407,22 +459,25 @@ __ROOMS__
   </div>
   <div class="lb-bar">
     <button class="lb-btn" id="lb-prev" type="button" aria-label="이전 사진">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
     </button>
     <div class="lb-caption" aria-live="polite">
       <p class="lb-title" id="lb-title"></p>
       <p class="lb-meta" id="lb-meta"></p>
     </div>
     <button class="lb-btn" id="lb-next" type="button" aria-label="다음 사진">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
     </button>
   </div>
 </div>
 
 <script>
 (function () {
-  /* ---------- fade prints in as they arrive ---------- */
-  document.querySelectorAll('.print img, .cover-btn img').forEach(function (img) {
+  var all = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
+  var calm = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+
+  /* ---------- fade photos in as they arrive ---------- */
+  all('.print-btn img, .cover-btn img').forEach(function (img) {
     if (img.complete && img.naturalWidth) return;
     var holder = img.parentElement;
     holder.classList.add('is-loading');
@@ -432,23 +487,23 @@ __ROOMS__
   });
 
   /* ---------- justified hang ---------- */
+  var CAP = 1.6;  // a row taller than CAP x target keeps the target height and stops short
+
   function targetHeight(w) {
-    if (w >= 1100) return 330;
-    if (w >= 720) return 250;
-    return 210;
+    if (w >= 1100) return 340;
+    if (w >= 720) return 260;
+    return 200;
   }
 
-  function layoutHang(hang) {
-    var W = hang.clientWidth;
-    if (!W) return;
+  function layoutHang(hang, W) {
     var gap = parseFloat(getComputedStyle(hang).columnGap) || 0;
     var T = targetHeight(W);
-    var items = Array.prototype.map.call(hang.querySelectorAll('.print'), function (el) {
-      return { el: el, r: parseFloat(el.dataset.w) / parseFloat(el.dataset.h) };
+    var items = all('.print', hang).map(function (el) {
+      return { el: el, btn: el.querySelector('.print-btn'), r: parseFloat(el.dataset.w) / parseFloat(el.dataset.h) };
     });
 
-    /* split the prints into consecutive rows so every row fills the width and
-       row heights stay as close to the target as possible */
+    /* split the prints into consecutive rows whose heights stay as close to the target as
+       possible; only the last row may be too short to fill the width (it gets capped) */
     var n = items.length;
     var best = [0], cut = [0];
     for (var i = 1; i <= n; i++) {
@@ -457,6 +512,7 @@ __ROOMS__
       for (var j = i - 1; j >= 0; j--) {
         s += items[j].r;
         var h = (W - gap * (i - j - 1)) / s;
+        if (h > T * CAP && i < n) continue;
         var c = best[j] + Math.pow(Math.log(h / T), 2);
         if (c < best[i]) { best[i] = c; cut[i] = j; }
       }
@@ -465,27 +521,27 @@ __ROOMS__
     for (var end = n; end > 0; end = cut[end]) {
       var list = items.slice(cut[end], end);
       var sum = list.reduce(function (acc, it) { return acc + it.r; }, 0);
-      rows.unshift({ items: list, h: (W - gap * (list.length - 1)) / sum, full: true });
+      var rh = (W - gap * (list.length - 1)) / sum;
+      rows.unshift(rh > T * CAP ? { items: list, h: T, full: false } : { items: list, h: rh, full: true });
     }
 
     rows.forEach(function (row) {
-      row.items.forEach(function (it, i) {
-        var s = it.el.style;
-        s.height = row.h.toFixed(2) + 'px';
-        s.width = Math.floor(row.h * it.r) + 'px';
-        s.aspectRatio = 'auto';
-        s.flexGrow = (row.full && i === row.items.length - 1) ? '1' : '0';
+      row.items.forEach(function (it, k) {
+        it.el.style.width = Math.floor(row.h * it.r) + 'px';
+        it.el.style.flexGrow = (row.full && k === row.items.length - 1) ? '1' : '0';
+        it.btn.style.height = row.h.toFixed(2) + 'px';
       });
     });
+    hang.classList.add('is-laid');
   }
 
-  var hangs = Array.prototype.slice.call(document.querySelectorAll('.hang'));
+  var hangs = all('.hang');
   var widths = new WeakMap();
   var relayout = function (hang) {
-    var w = hang.clientWidth;
-    if (widths.get(hang) === w) return;
-    widths.set(hang, w);
-    layoutHang(hang);
+    var W = Math.floor(hang.getBoundingClientRect().width);
+    if (!W || widths.get(hang) === W) return;
+    widths.set(hang, W);
+    layoutHang(hang, W);
   };
   hangs.forEach(relayout);
   if ('ResizeObserver' in window) {
@@ -497,22 +553,43 @@ __ROOMS__
     window.addEventListener('resize', function () { hangs.forEach(relayout); });
   }
 
-  /* ---------- room index highlights the room in view ---------- */
-  var navLinks = Array.prototype.slice.call(document.querySelectorAll('.mast-rooms a'));
+  /* ---------- the room in view is lit in the bar ---------- */
+  var rooms = all('.room');
+  var links = {};
+  all('.bar-rooms a').forEach(function (a) { links[a.getAttribute('href').slice(1)] = a; });
+  var here = null;
+
+  function reveal(a) {  // keep the lit room in sight when the index slides sideways
+    var nav = a.parentElement;
+    if (nav.scrollWidth <= nav.clientWidth) return;
+    var cs = getComputedStyle(nav), nr = nav.getBoundingClientRect(), ar = a.getBoundingClientRect();
+    var left = nr.left + parseFloat(cs.paddingLeft), right = nr.right - parseFloat(cs.paddingRight);
+    var dx = ar.left < left ? ar.left - left : (ar.right > right ? ar.right - right : 0);
+    if (dx) nav.scrollBy({ left: dx, behavior: calm.matches ? 'auto' : 'smooth' });
+  }
+
+  function light(room) {
+    if (room === here) return;
+    var old = here && links[here.id];
+    if (old) { old.classList.remove('is-here'); old.removeAttribute('aria-current'); }
+    here = room;
+    var a = room && links[room.id];
+    if (a) { a.classList.add('is-here'); a.setAttribute('aria-current', 'true'); reveal(a); }
+  }
+
+  /* the current room is the last one whose top has passed the middle of the screen */
+  function update() {
+    var line = window.innerHeight / 2, cur = null;
+    rooms.forEach(function (r) { if (r.getBoundingClientRect().top <= line) cur = r; });
+    light(cur);
+  }
   if ('IntersectionObserver' in window) {
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (e) {
-        if (!e.isIntersecting) return;
-        navLinks.forEach(function (a) {
-          a.classList.toggle('is-here', a.getAttribute('href') === '#' + e.target.id);
-        });
-      });
-    }, { rootMargin: '-45% 0px -50% 0px' });
-    document.querySelectorAll('.room').forEach(function (r) { io.observe(r); });
+    var io = new IntersectionObserver(update, { rootMargin: '-45% 0px -50% 0px' });
+    rooms.forEach(function (r) { io.observe(r); });
   }
 
   /* ---------- viewing room ---------- */
-  var prints = Array.prototype.slice.call(document.querySelectorAll('.hang .print'));
+  var prints = all('.hang .print');
   var N = prints.length;
   var lb = document.getElementById('lb');
   var lbImg = document.getElementById('lb-img');
@@ -528,9 +605,8 @@ __ROOMS__
   var pad = function (n) { return (n < 10 ? '0' : '') + n; };
 
   function preload(i) {
-    var p = prints[(i + N) % N];
     var im = new Image();
-    im.src = p.dataset.full;
+    im.src = prints[(i + N) % N].dataset.full;
   }
 
   function show(i) {
@@ -565,9 +641,9 @@ __ROOMS__
   }
 
   prints.forEach(function (p, i) {
-    p.addEventListener('click', function () { open(i); });
+    p.querySelector('.print-btn').addEventListener('click', function () { open(i); });
   });
-  document.querySelectorAll('[data-open]').forEach(function (el) {
+  all('[data-open]').forEach(function (el) {
     el.addEventListener('click', function () {
       var slug = el.getAttribute('data-open');
       var i = prints.findIndex(function (p) { return p.dataset.slug === slug; });
@@ -584,7 +660,7 @@ __ROOMS__
     if (e.key === 'Escape') { e.preventDefault(); close(); }
     else if (e.key === 'ArrowLeft') { e.preventDefault(); show(idx - 1); }
     else if (e.key === 'ArrowRight') { e.preventDefault(); show(idx + 1); }
-    else if (e.key === 'Tab') {
+    else if (e.key === 'Tab') {  // keep focus inside the viewing room
       var f = [btnClose, btnPrev, btnNext];
       var at = f.indexOf(document.activeElement);
       e.preventDefault();
