@@ -6,8 +6,8 @@
   "date": "2026.04.05",
   "camera": "Nothing Phone (2a) · f/1.87 · 1/2736s · ISO 100",
   "grayscale": false,
-  "status": "waiting",
-  "claimed_at": null,
-  "by": null,
+  "status": "pc",
+  "claimed_at": "2026-10-10T03:04:58Z",
+  "by": "pc",
   "error": null
 }
