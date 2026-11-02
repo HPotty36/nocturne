@@ -21,7 +21,7 @@ admin/                   관리 페이지 (정적, 외부 스크립트 없음)
   icons/                 관리 앱 아이콘 넷 (사이트 아이콘을 뒤집은 것. 손으로 만든 것, 자동으로 다시 만들지 않는다)
   views/queue.js         새 사진 탭 (공유한 사진 올리기 포함)
   views/exhibit.js       전시 중 탭
-  lib/                   names exif jpeg image grayscale auth github gallery queue sitestatus shared (.js)
+  lib/                   names exif jpeg image grayscale auth github gallery queue sitestatus shared installed (.js)
 auth/worker.js           Cloudflare Worker: 관리 페이지 로그인 코드를 토큰으로 바꿔 준다 (대시보드에 붙여 넣음)
 scripts/
   photolib.py            이름 규칙, EXIF 힌트, 흑백 판별, 메타데이터 없는 사본, photos.json 읽기·쓰기, ai 함수
@@ -270,7 +270,7 @@ GitHub Actions의 Claude 단계와 대표 사진 고르기 단계는 저장소 �
 - 크게 보기는 검은 화면에 사진을 들어가는 만큼 크게 둔다. 아래 한 줄: 왼쪽 "제목, 날짜", 오른쪽 "3 / 23"과 글자 버튼 "이전 · 다음 · 닫기"(평소 `--ink-dim`, 마우스나 포커스에 `--ink`, 높이 24px 이상, 960px 미만이나 손가락 화면은 40px 이상). 좁으면 두 줄로 내려간다. 처음엔 썸네일을 보여주고 원본이 받아지면 바꾸며(닫은 뒤나 다른 사진으로 넘어간 뒤 늦게 받아진 원본은 쓰지 않는다) 앞뒤 원본을 미리 받는다. 방향키, 스와이프, Esc, 사진 바깥 클릭으로 닫기. 열면 "닫기"에 포커스, Tab은 세 버튼 안에서 돌고, 닫으면 연 자리로 포커스가 돌아간다. 영어 페이지에서 영어 제목이 없으면 캡션에 `lang="ko"`를 붙인다.
 - 언어 링크("English"/"한국어")를 누르면 `localStorage`의 `nocturne.lang`에 그 언어를 적는다. 한국어 페이지 머리의 작은 스크립트(`src/redirect.js`를 빌드가 그대로 인라인으로 넣는다)가 이 값(없으면 브라우저 언어)을 보고 영어 페이지로 보낸다. 영어 페이지의 "한국어" 링크는 `../?lang=ko`로 간다: 주소에 `lang=ko`가 있으면 그 스크립트는 아무것도 하지 않으므로, 저장소가 막힌 브라우저에서도 한국어를 고른 사람이 영어로 되돌려 보내지지 않는다. 한국어 페이지의 "English" 링크는 `en/` 그대로다.
 - 관리 페이지는 375px 폭에서 쓸 수 있어야 한다. CSP 때문에 인라인 스크립트·스타일을 쓰지 않는다.
-- 사이트의 "관리"(작은 글씨, `--ink-dim`, 누구에게나 보임)는 관리 페이지로 가고, 관리 페이지 위쪽의 "Nocturne"은 사이트를 새 탭에 연다.
+- 사이트의 "관리"(작은 글씨, `--ink-dim`, 누구에게나 보임)는 관리 페이지로 가고, 관리 페이지 위쪽의 "Nocturne"은 사이트를 새 탭에 연다 (관리 페이지가 열린 채 로그인이 유지된다). 설치한 앱 안(사이트 앱이나 관리 앱, `display-mode: standalone` 또는 iOS의 `navigator.standalone`)에서는 새 탭이 앱 밖(아이폰·아이패드는 Safari)으로 나가므로 같은 창에서 사이트로 간다. 이때 메모리의 로그인은 끝나고, 다시 "관리"를 누르면 저절로 로그인된다.
 
 ## 설치와 오프라인
 

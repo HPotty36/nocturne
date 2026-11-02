@@ -24,6 +24,7 @@ import {
   saveLogin, takeLogin,
 } from './lib/auth.js';
 import { AuthError, GitHub, GitHubError } from './lib/github.js';
+import { installedApp } from './lib/installed.js';
 import { cacheStorage, pendingShares } from './lib/shared.js';
 import { SiteStatus } from './lib/sitestatus.js';
 import { renderExhibit } from './views/exhibit.js';
@@ -304,6 +305,10 @@ if (['localhost', '127.0.0.1'].includes(window.location.hostname)) {
 }
 
 forget(local, OLD_TOKEN_KEY); // the sealed token of the old paste-a-token login
+
+// "Nocturne" opens the site in a new tab, so this page stays open and logged in. In an installed app a new tab would
+// leave the app (an iPad opens Safari), so there it goes to the site in place; "관리" there logs in again by itself.
+if (installedApp(window)) document.querySelector('.brand .mark')?.removeAttribute('target');
 
 // The worker that receives photos from the share sheet (admin/sw.js; scope admin/). Without it the page works the same.
 if ('serviceWorker' in navigator && /^https?:$/.test(window.location.protocol)) {
