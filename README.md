@@ -28,9 +28,10 @@ GitHub Pages. The repository holds everything; there is no database.
 ## Highlights
 
 - **Four rooms**: River, Stadium, Night and Moments. A room's header shows how many prints it holds and the months they cover, and every print has a "title, date" label.
-- **Justified rows**: every row fills the width, and prints keep their own aspect ratio. Nothing is cropped.
+- **Justified rows**: every row fills the width, and prints keep their own aspect ratio. Nothing in a room is cropped.
 - **Viewing room**: click any print to see it large on black; arrow keys, swipe and Esc work as you expect.
-- **A black room, one serif**: a pure black page set in a single typeface (Noto Serif KR), with no accent colour.
+- **A black room, one serif**: a pure black page set in a single typeface (Noto Serif KR), with no accent colour. The site name and the room names stand large and vertically, and a room's name follows its photos down the page.
+- **A cover Claude picks**: the photo at the top fills the first screen. When the photos on show change, Claude picks the cover again and says where to crop it; a cover picked by hand stays.
 - **Korean and English**: a toggle switches pages and is remembered.
 - **Installable, works offline**: install it on a phone; after it has been opened online once it works offline.
 - **Share to upload**: the admin page installs as its own app, and on Android you can share photos from the gallery app to "Nocturne 관리". Nothing goes up until you tap 올리기 (upload).
