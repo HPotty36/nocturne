@@ -29,6 +29,14 @@ test('serialize is stable: canonical text parses and serializes to itself', () =
   assert.equal(serialize(JSON.parse(canonical)), canonical);
 });
 
+test('serialize puts the cover keys after site, each on one line', () => {
+  const data = { site: { title: 'N' }, cover_pick: { by: 'person' }, rooms: [], cover_focus: [0.42, 0.5], cover: 'a1' };
+  assert.equal(serialize(data), [
+    '{', '  "site": {', '    "title": "N"', '  },', '  "cover": "a1",', '  "cover_focus": [0.42,0.5],',
+    '  "cover_pick": {"by":"person"},', '  "rooms": []', '}', ''].join('\n'));
+  assert.ok(serialize({ rooms: [], cover_focus: [0, 1] }).startsWith('{\n  "cover_focus": [0,1],\n  "rooms": []'));
+});
+
 test('serialize layout rules', () => {
   const data = {
     site: {},

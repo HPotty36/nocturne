@@ -26,11 +26,22 @@ export class GalleryError extends Error {
 // 2-space indent, every rooms[*].photos[*] element on one line, Korean left unescaped, final newline.
 
 const PHOTO_PATH = ['rooms', '*', 'photos', '*'];
-const isPhotoPath = (path) => path.length === PHOTO_PATH.length && path.every((part, i) => part === PHOTO_PATH[i]);
+export const COVER_KEYS = ['cover', 'cover_focus', 'cover_pick']; // the cover, where to crop it, who picked it: right after "site"
+const ONE_LINE = [PHOTO_PATH, ['cover_focus'], ['cover_pick']];
+const isOneLine = (path) => ONE_LINE.some((one) => path.length === one.length && path.every((part, i) => part === one[i]));
 const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 
+/** data with the cover keys it has moved right after "site" (first if there is no "site"); the other keys keep their order. Anything but an object is returned as it is. */
+function topOrder(data) {
+  if (!isObject(data)) return data;
+  const cover = COVER_KEYS.filter((key) => key in data).map((key) => [key, data[key]]);
+  const rest = Object.entries(data).filter(([key]) => !COVER_KEYS.includes(key));
+  const at = rest.findIndex(([key]) => key === 'site') + 1; // 0 when there is no "site"
+  return Object.fromEntries([...rest.slice(0, at), ...cover, ...rest.slice(at)]);
+}
+
 function dump(value, depth, path) {
-  if (isPhotoPath(path)) return JSON.stringify(value);
+  if (isOneLine(path)) return JSON.stringify(value);
   const pad = '  '.repeat(depth + 1);
   const close = '  '.repeat(depth);
   if (isObject(value)) {
@@ -47,9 +58,12 @@ function dump(value, depth, path) {
   return JSON.stringify(value); // scalars, [] and {}
 }
 
-/** photos.json text. Numbers print like Python's only for whole values and short decimals (confidence is rounded to 3 places). */
+/**
+ * photos.json text. Numbers print like Python's only for whole values and short decimals (confidence is rounded to 3
+ * places, a cover focus to 2). The cover keys sit right after "site".
+ */
 export function serialize(data) {
-  return `${dump(data, 0, [])}\n`;
+  return `${dump(topOrder(data), 0, [])}\n`;
 }
 
 // --- finding things --------------------------------------------------------------------------------------------

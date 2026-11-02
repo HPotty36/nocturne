@@ -2,6 +2,7 @@
 
 Used by prepare_photos.py and by the admin tools. Dependencies: standard library + Pillow.
 """
+import hashlib
 import json
 import os
 import re
@@ -122,10 +123,23 @@ def make_web_copies(src, root, name):
 # gallery.js writes the same text byte for byte, so a save from either side makes no diff.
 
 _PHOTO_PATH = ("rooms", "*", "photos", "*")  # these objects go on one line each
+COVER_KEYS = ("cover", "cover_focus", "cover_pick")  # the cover, where to crop it, who picked it: right after "site"
+_ONE_LINE = {_PHOTO_PATH, ("cover_focus",), ("cover_pick",)}
+
+
+def _top_order(data):
+    """data with the cover keys it has moved right after "site" (first if there is no "site"); the other keys keep
+    their order. Anything but a dict is returned as it is."""
+    if not isinstance(data, dict):
+        return data
+    cover = [(k, data[k]) for k in COVER_KEYS if k in data]
+    rest = [(k, v) for k, v in data.items() if k not in COVER_KEYS]
+    at = next((i + 1 for i, (k, _) in enumerate(rest) if k == "site"), 0)
+    return dict(rest[:at] + cover + rest[at:])
 
 
 def _dump(value, depth, path):
-    if path == _PHOTO_PATH:
+    if path in _ONE_LINE:
         return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
     pad = "  " * (depth + 1)
     if isinstance(value, dict) and value:
@@ -138,8 +152,9 @@ def _dump(value, depth, path):
 
 
 def dumps_data(data):
-    """photos.json text: 2-space indent, one line per photo, Korean left unescaped, final newline."""
-    return _dump(data, 0, ()) + "\n"
+    """photos.json text: 2-space indent, one line per photo (and for cover_focus, cover_pick), Korean left unescaped,
+    final newline. The cover keys sit right after "site"."""
+    return _dump(_top_order(data), 0, ()) + "\n"
 
 
 def _data_path(root):
@@ -166,6 +181,12 @@ def save_data(root, data):
 def listed(data):
     """File names of every photo that is registered in a room."""
     return {p["file"] for room in data["rooms"] for p in room["photos"]}
+
+
+def fingerprint(data):
+    """8 hex naming the set of photos on show: sha256 of their file names, sorted, one per line. The cover step
+    (scripts/cover.py) keeps the one it picked for, so it picks again only when photos come or go."""
+    return hashlib.sha256("\n".join(sorted(listed(data))).encode("utf-8")).hexdigest()[:8]
 
 
 def find_photo(data, name):

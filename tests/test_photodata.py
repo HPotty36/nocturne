@@ -1,3 +1,4 @@
+import hashlib
 import json
 import shutil
 import tempfile
@@ -17,6 +18,23 @@ class DataTests(unittest.TestCase):
 
     def test_canonical_text(self):
         self.assertEqual(photolib.dumps_data(helpers.SITE), (helpers.FIXTURES / "site.canonical.json").read_text(encoding="utf-8"))
+
+    def test_cover_keys_follow_site_on_one_line(self):
+        data = {"site": {"title": "N"}, "cover_pick": {"by": "person"}, "rooms": [], "cover_focus": [0.42, 0.5], "cover": "a1"}
+        self.assertEqual(photolib.dumps_data(data), "\n".join([
+            "{", '  "site": {', '    "title": "N"', "  },", '  "cover": "a1",', '  "cover_focus": [0.42,0.5],',
+            '  "cover_pick": {"by":"person"},', '  "rooms": []', "}", ""]))
+        self.assertEqual(photolib.COVER_KEYS, ("cover", "cover_focus", "cover_pick"))
+
+    def test_cover_keys_without_site_come_first(self):
+        text = photolib.dumps_data({"rooms": [], "cover_focus": [0, 1]})
+        self.assertTrue(text.startswith('{\n  "cover_focus": [0,1],\n  "rooms": []'), text)
+
+    def test_fingerprint(self):
+        self.assertEqual(photolib.fingerprint(helpers.SITE), hashlib.sha256("a1\na2\nn1".encode()).hexdigest()[:8])
+        photolib.add_photo(self.d, "night", {"file": "n0", "title": "t", "alt": "a"})
+        self.assertNotEqual(photolib.fingerprint(self.d), photolib.fingerprint(helpers.SITE))
+        self.assertEqual(len(photolib.fingerprint({"rooms": []})), 8)
 
     def test_real_data_shape(self):
         data = photolib.load_data(helpers.ROOT)

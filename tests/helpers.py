@@ -21,6 +21,8 @@ SITE = {
     "site": {"title": "Nocturne", "description": "사진 {total}점", "description_en": "{total} photographs",
              "copyright": "© 2026 Nocturne"},
     "cover": "a1",
+    "cover_focus": [0.42, 0.5],
+    "cover_pick": {"by": "ai", "model": "claude-opus-5-5", "seen": "4ac4a409"},  # seen: photolib.fingerprint(SITE)
     "rooms": [
         {"id": "river", "name": "강", "name_en": "River", "note": "물가에서 바라본 도시",
          "photos": [{"file": "a1", "title": "스카이라인", "alt": "강 건너 빌딩"},

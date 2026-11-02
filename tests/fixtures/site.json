@@ -6,6 +6,15 @@
     "copyright": "© 2026 Nocturne"
   },
   "cover": "a1",
+  "cover_focus": [
+    0.42,
+    0.5
+  ],
+  "cover_pick": {
+    "by": "ai",
+    "model": "claude-opus-5-5",
+    "seen": "4ac4a409"
+  },
   "rooms": [
     {
       "id": "river",
