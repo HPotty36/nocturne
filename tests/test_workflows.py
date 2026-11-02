@@ -71,7 +71,8 @@ class WorkflowTests(unittest.TestCase):
     def test_draft_steps_run_claude_first_then_ollama_for_what_is_left(self):
         t = self.text(".github/workflows/draft.yml")
         self.assertEqual(re.findall(r"^      - name: (.+)$", t, re.M),
-                         ["Claude SDK 설치", "Claude로 초안 쓰고 게시", "남은 사진 찾기", "Ollama v0.35.1 내려받기", "모델 폴더 캐시 불러오기",
+                         ["Claude SDK 설치", "Claude로 초안 쓰고 게시", "대표 사진 고르기", "남은 사진 찾기", "Ollama v0.35.1 내려받기",
+                          "모델 폴더 캐시 불러오기",
                           "Ollama 서버 켜기", "모델 내려받기", "모델 폴더 캐시 저장", "e4b로 초안 쓰고 게시",
                           "사이트 다시 만들기"])
         claude = self.step(t, "Claude로 초안 쓰고 게시")
@@ -79,6 +80,11 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("continue-on-error: true", claude)  # a crash must not keep e4b from the rest
         self.assertIn("run: python scripts/worker.py --by github --run --ai claude", claude)
         self.assertNotIn("if:", claude)  # the worker itself takes nothing without a key
+        cover = self.step(t, "대표 사진 고르기")  # before Ollama is downloaded: the key never meets the Ollama binary
+        self.assertIn("id: cover", cover)
+        self.assertIn("continue-on-error: true", cover)  # a failure here must not keep e4b from the rest
+        self.assertIn("run: python scripts/cover.py", cover)
+        self.assertNotIn("if:", cover)  # it runs on every trigger: photos published by e4b or the PC are picked up later
         check = self.step(t, "남은 사진 찾기")
         self.assertIn("id: check", check)
         self.assertIn("run: python scripts/worker.py --by github --check", check)
@@ -99,7 +105,8 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("steps.check.outputs.names != ''", t)
         # published photos still trigger a rebuild when another item errored
         self.assertIn("if: ${{ !cancelled() && ((steps.claude.outputs.published != '' && steps.claude.outputs.published != '0')"
-                      " || (steps.run.outputs.published != '' && steps.run.outputs.published != '0')) }}", t)
+                      " || (steps.run.outputs.published != '' && steps.run.outputs.published != '0')"
+                      " || steps.cover.outputs.changed == '1') }}", t)
         self.assertIn("if: ${{ !cancelled()", self.step(t, "사이트 다시 만들기"))
     def test_draft_model_cache_saved_right_after_pull(self):
         t = self.text(".github/workflows/draft.yml")
@@ -135,24 +142,27 @@ class WorkflowTests(unittest.TestCase):
         t = self.text(".github/workflows/draft.yml")
         job_env = t[t.index("runs-on:"):t.index("    steps:")]
         self.assertNotIn("GITHUB_TOKEN", job_env)
-        self.assertEqual(t.count("GITHUB_TOKEN:"), 3)
-        for name in ("Claude로 초안 쓰고 게시", "남은 사진 찾기", "e4b로 초안 쓰고 게시"):
+        self.assertEqual(t.count("GITHUB_TOKEN:"), 4)
+        for name in ("Claude로 초안 쓰고 게시", "대표 사진 고르기", "남은 사진 찾기", "e4b로 초안 쓰고 게시"):
             self.assertIn("env:\n          GITHUB_TOKEN: ${{ github.token }}", self.step(t, name), name)
         for name in ("Ollama v0.35.1 내려받기", "모델 폴더 캐시 불러오기", "Ollama 서버 켜기", "모델 내려받기",
                      "모델 폴더 캐시 저장"):
             self.assertNotIn("TOKEN", self.step(t, name), name)
-    def test_draft_anthropic_key_only_on_the_claude_step(self):
-        # the key is a secret: it must not reach the job env, the Ollama steps, or the steps after them
+    def test_draft_anthropic_key_only_on_the_claude_steps(self):
+        # the key is a secret: only the Claude pass and the cover step get it, both before Ollama is downloaded; never the
+        # job env, the Ollama steps, or the steps after them
         t = self.text(".github/workflows/draft.yml")
         job_env = t[t.index("runs-on:"):t.index("    steps:")]
         self.assertNotIn("ANTHROPIC", job_env)
         # nothing before the Claude step names the key: not the triggers, the job env, nor the unnamed or SDK steps
         self.assertNotIn("ANTHROPIC", t[:t.index("- name: Claude로 초안 쓰고 게시")])
         self.assertLess(t.index("jobs:"), t.index("- name: Claude로 초안 쓰고 게시"))
-        self.assertEqual(t.count("secrets."), 1)
-        self.assertEqual(t.count("ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}"), 1)
-        self.assertIn("env:\n          GITHUB_TOKEN: ${{ github.token }}\n          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}",
-                      self.step(t, "Claude로 초안 쓰고 게시"))
+        self.assertEqual(t.count("secrets."), 2)
+        self.assertEqual(t.count("ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}"), 2)
+        for name in ("Claude로 초안 쓰고 게시", "대표 사진 고르기"):
+            self.assertIn("env:\n          GITHUB_TOKEN: ${{ github.token }}\n          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}",
+                          self.step(t, name), name)
+        self.assertNotIn("ANTHROPIC", t[t.index("- name: 남은 사진 찾기"):])
         for name in ("남은 사진 찾기", "Ollama v0.35.1 내려받기", "모델 폴더 캐시 불러오기", "Ollama 서버 켜기",
                      "모델 내려받기", "모델 폴더 캐시 저장", "e4b로 초안 쓰고 게시", "사이트 다시 만들기"):
             self.assertNotIn("ANTHROPIC", self.step(t, name), name)

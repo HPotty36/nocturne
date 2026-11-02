@@ -57,6 +57,17 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: python scripts/worker.py --by github --run --ai claude
 
+      # 전시 중인 사진이 바뀌었으면 Claude가 대표 사진과 자를 중심을 다시 고른다 (사람이 고른 대표는 중심만 정한다).
+      # 키가 없으면 아무것도 하지 않는다. Ollama를 내려받기 전이라 키가 Ollama가 도는 동안의 단계에 닿지 않는다.
+      # e4b나 PC가 게시한 사진은 다음 실행(30분마다)에서 반영된다. 실패해도 대표는 그대로 두고 실행은 이어진다
+      - name: 대표 사진 고르기
+        id: cover
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python scripts/cover.py
+
       # Claude가 못 쓴 사진(키가 없을 때는 전부)이 남았을 때만 아래 Ollama 단계들이 돈다
       - name: 남은 사진 찾기
         id: check
@@ -127,9 +138,9 @@ jobs:
         run: python scripts/worker.py --by github --run --ai ollama --only "${{ steps.check.outputs.names }}"
 
       # GITHUB_TOKEN으로 만든 push는 다른 워크플로를 시작하지 않으므로 직접 부른다
-      # (Claude 단계나 e4b 단계 중 하나라도 게시했으면)
+      # (Claude 단계나 e4b 단계 중 하나라도 게시했거나, 대표 사진이나 그 중심이 바뀌었으면)
       - name: 사이트 다시 만들기
-        if: ${{ !cancelled() && ((steps.claude.outputs.published != '' && steps.claude.outputs.published != '0') || (steps.run.outputs.published != '' && steps.run.outputs.published != '0')) }}
+        if: ${{ !cancelled() && ((steps.claude.outputs.published != '' && steps.claude.outputs.published != '0') || (steps.run.outputs.published != '' && steps.run.outputs.published != '0') || steps.cover.outputs.changed == '1') }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run site.yml --ref main
