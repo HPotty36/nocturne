@@ -17,8 +17,8 @@
 </div>
 
 <p align="center">
-  <img alt="Nocturne on a desktop: the site name and the four room names in a narrow column at the left, and a wide black-and-white cover print of a river with its label at the right" src=".github/assets/screen-desktop-dark.jpg" width="73%">
-  <img alt="Nocturne on a phone: a top bar with the site name, the language link and the room index, then the cover print and the start of the River room" src=".github/assets/screen-phone-dark.jpg" width="21%">
+  <img alt="Nocturne on a desktop: the site name set large and vertically at the top of a narrow left column with the four room names under it, and a black-and-white cover print of a river filling the rest of the first screen, its label underneath" src=".github/assets/screen-desktop-dark.jpg" width="73%">
+  <img alt="Nocturne on a phone: a top bar with the site name, the language link and the room index, the cover print from edge to edge, then the River room with its name set vertically beside its first photos" src=".github/assets/screen-phone-dark.jpg" width="21%">
 </p>
 
 Nocturne is a static photo gallery. Upload a photo from a phone or PC, and Claude hangs it in the right room with a

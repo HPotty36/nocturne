@@ -17,8 +17,8 @@
 </div>
 
 <p align="center">
-  <img alt="컴퓨터 화면의 Nocturne: 왼쪽 좁은 열에 사이트 이름과 네 방의 이름, 오른쪽에 강을 찍은 넓은 흑백 대표 사진과 라벨" src=".github/assets/screen-desktop-dark.jpg" width="73%">
-  <img alt="폰 화면의 Nocturne: 사이트 이름, 언어 링크, 방 목록이 있는 위 줄, 그 아래 대표 사진과 강 방의 첫머리" src=".github/assets/screen-phone-dark.jpg" width="21%">
+  <img alt="컴퓨터 화면의 Nocturne: 왼쪽 좁은 열 맨 위에 세로로 크게 선 사이트 이름과 그 아래 네 방의 이름, 오른쪽 첫 화면을 채운 강의 흑백 대표 사진과 라벨" src=".github/assets/screen-desktop-dark.jpg" width="73%">
+  <img alt="폰 화면의 Nocturne: 사이트 이름, 언어 링크, 방 목록이 있는 위 줄, 화면 폭 가득한 대표 사진, 그 아래 세로로 선 방 이름 옆에 사진이 걸린 강 방의 첫머리" src=".github/assets/screen-phone-dark.jpg" width="21%">
 </p>
 
 Nocturne은 정적 사진 전시 사이트입니다. 폰이나 PC에서 사진을 올리면 Claude가 방을 고르고 제목과 대체 텍스트를
