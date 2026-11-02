@@ -5,7 +5,9 @@
     "description_en": "A photo exhibition of {total} photographs taken by the river, at the stadium and on late-night streets.",
     "copyright": "© 2026 Nocturne"
   },
-  "cover": "0306",
+  "cover": "1000018243",
+  "cover_focus": [0.5,0.5],
+  "cover_pick": {"by":"ai","model":"claude-opus-5-5","seen":"47408093"},
   "rooms": [
     {
       "id": "river",
