@@ -694,6 +694,94 @@ class ClaudeDraftTests(unittest.TestCase):
         self.assertEqual(got["room"], "night")
 
 
+class ClaudePickCoverTests(unittest.TestCase):
+    """curator.claude_pick_cover: Claude looks at the photos on show and names the cover and where to crop it."""
+
+    CANDIDATES = [{"file": "a1", "title": "스카이라인", "room": "강", "image": b"jpeg-a1"},
+                  {"file": "n1", "title": "공중전화", "room": "밤", "image": b"jpeg-n1"}]
+
+    def setUp(self):
+        env = mock.patch.dict(os.environ)
+        env.start()
+        self.addCleanup(env.stop)
+        os.environ.pop("NOCTURNE_CLAUDE_MODEL", None)
+
+    def pick(self, reply=None, *, response=None, error=None, candidates=None, current="a1", **kwargs):
+        if response is None:
+            response = claude_response(reply if reply is not None else {"file": "n1", "focus_x": 0.3, "focus_y": 0.6})
+        client = FakeClient(response, error)
+        got = curator.claude_pick_cover(candidates or self.CANDIDATES, current, client=client, **kwargs)
+        return got, client
+
+    def failure(self, **kwargs):
+        with self.assertRaises(curator.CuratorError) as cm:
+            self.pick(**kwargs)
+        return str(cm.exception)
+
+    def test_pick_cover_request(self):
+        _, client = self.pick()
+        self.assertEqual(len(client.calls), 1)
+        kw = client.calls[0]
+        self.assertEqual((kw["model"], kw["max_tokens"], kw["betas"], kw["fallbacks"]),
+                         ("claude-opus-5-5", 16000, ["server-side-fallback-2026-07-01"], "default"))
+        self.assertEqual(kw["output_config"]["effort"], "low")
+        schema = kw["output_config"]["format"]["schema"]
+        self.assertEqual(schema["properties"]["file"], {"type": "string", "enum": ["a1", "n1"]})
+        self.assertEqual(schema["required"], ["file", "focus_x", "focus_y"])
+        self.assertIs(schema["additionalProperties"], False)
+        content = kw["messages"][0]["content"]
+        self.assertEqual([block["type"] for block in content], ["text", "text", "image", "text", "image", "text"])
+        self.assertEqual(content[1]["text"], "사진 a1: 스카이라인 (방: 강)")
+        self.assertEqual(content[2]["source"], {"type": "base64", "media_type": "image/jpeg",
+                                                "data": base64.b64encode(b"jpeg-a1").decode("ascii")})
+        self.assertEqual(content[3]["text"], "사진 n1: 공중전화 (방: 밤)")
+        last = content[-1]["text"]
+        for s in ("대표 사진", "4:5", "focus_x", "지금 대표 사진은 a1입니다"):
+            self.assertIn(s, last)
+        self.assertNotIn("JSON으로만 답하세요", last)  # the schema says how to answer
+
+    def test_pick_cover_without_a_current_cover(self):
+        _, client = self.pick(current=None)
+        self.assertNotIn("지금 대표 사진은", client.calls[0]["messages"][0]["content"][-1]["text"])
+
+    def test_pick_cover_reply(self):
+        got, _ = self.pick({"file": "n1", "focus_x": 0.333, "focus_y": 1.0})
+        self.assertEqual(got, {"file": "n1", "focus": [0.33, 1], "model": "claude-opus-5-5"})
+        self.assertIsInstance(got["focus"][1], int)  # whole values are written as 0 or 1, the same in Python and JS
+        got, _ = self.pick(response=claude_response({"file": "a1", "focus_x": 0.5, "focus_y": 0.25}, model="claude-sonnet-5-5"))
+        self.assertEqual(got, {"file": "a1", "focus": [0.5, 0.25], "model": "claude-sonnet-5-5"})  # the model that answered
+
+    def test_focus_is_clamped(self):
+        for x, want in ((-0.2, 0), (1.7, 1), (float("nan"), 0.5), ("left", 0.5), (True, 0.5), (0.005, 0.01)):
+            got, _ = self.pick({"file": "n1", "focus_x": x, "focus_y": 0.5})
+            self.assertEqual(got["focus"][0], want, x)
+
+    def test_focus_only_request(self):
+        got, client = self.pick({"file": "a1", "focus_x": 0.1, "focus_y": 0.9}, candidates=self.CANDIDATES[:1], focus_only=True)
+        content = client.calls[0]["messages"][0]["content"]
+        self.assertEqual([block["type"] for block in content], ["text", "text", "image", "text"])
+        self.assertNotIn("지금 대표 사진은", content[-1]["text"])
+        self.assertIn("focus_x", content[-1]["text"])
+        self.assertEqual(client.calls[0]["output_config"]["format"]["schema"]["properties"]["file"]["enum"], ["a1"])
+        self.assertEqual(got["focus"], [0.1, 0.9])
+
+    def test_pick_cover_failures(self):
+        cases = [
+            (dict(response=claude_response(stop_reason="refusal", text="")), "Claude가 대표 사진 고르기를 거절했어요"),
+            (dict(response=claude_response(stop_reason="max_tokens", text="")), "Claude의 답이 끊겼어요"),
+            (dict(error=APIStatusError(401)), "Claude API 키가 맞지 않아요"),
+            (dict(error=APIConnectionError("down")), "Claude API에 연결하지 못했어요"),
+        ]
+        for kwargs, message in cases:
+            self.assertEqual(self.failure(**kwargs), message)
+        self.assertEqual(curator.CLAUDE_COVER_REFUSED, "Claude가 대표 사진 고르기를 거절했어요")
+        for reply in ("not json", json.dumps({"file": "zz", "focus_x": 0.5, "focus_y": 0.5}), json.dumps(["a1"])):
+            self.assertTrue(self.failure(response=claude_response(text=reply)).startswith("Claude의 답을 읽을 수 없어요 ("), reply)
+        message = self.failure(response=claude_response(blocks=[SimpleNamespace(type="thinking", thinking="…")]))
+        self.assertTrue(message.startswith("Claude의 답을 읽을 수 없어요 ("))
+        self.assertTrue(curator.is_claude_failure(curator.CLAUDE_COVER_REFUSED))
+
+
 class FakeAITests(unittest.TestCase):
     def test_fake(self):
         ai = helpers.FakeAI(room="river", confidence=0.5)

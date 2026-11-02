@@ -39,11 +39,12 @@ CLAUDE_NO_ACCESS = "Claude API 권한이나 크레딧을 확인해 주세요"
 CLAUDE_BUSY = "Claude API 요청이 너무 많아요"
 CLAUDE_OFFLINE = "Claude API에 연결하지 못했어요"
 CLAUDE_REFUSED = "Claude가 이 사진의 초안을 거절했어요"
+CLAUDE_COVER_REFUSED = "Claude가 대표 사진 고르기를 거절했어요"
 CLAUDE_CUT_OFF = "Claude의 답이 끊겼어요"
 CLAUDE_STATUS = "Claude API 오류 "  # + the status, and maybe "(<type>, <request id>)"
 CLAUDE_UNREADABLE = "Claude의 답을 읽을 수 없어요 ("  # + the reason and ")"
 _CLAUDE_FAILURES = frozenset({CLAUDE_NO_KEY, CLAUDE_NO_PACKAGE, CLAUDE_BAD_KEY, CLAUDE_NO_ACCESS, CLAUDE_BUSY,
-                              CLAUDE_OFFLINE, CLAUDE_REFUSED, CLAUDE_CUT_OFF})
+                              CLAUDE_OFFLINE, CLAUDE_REFUSED, CLAUDE_COVER_REFUSED, CLAUDE_CUT_OFF})
 # Anthropic's error type names: only one of these is put in a note, never whatever else an error body says
 CLAUDE_ERROR_TYPES = frozenset({"invalid_request_error", "authentication_error", "permission_error", "not_found_error",
                                 "request_too_large", "rate_limit_error", "api_error", "overloaded_error", "billing_error"})
@@ -60,6 +61,23 @@ PROMPT_RULES = """규칙:
 - 영어 제목은 2~6단어의 짧은 명사구, 영어 alt는 무엇이 찍혔는지 한 문장이고 마침표로 끝내지 마세요. 영어에도 위 규칙(장소 이름, 흑백)을 똑같이 지키세요."""
 PROMPT_REPLY = 'JSON으로만 답하세요: {"room": "<방 id>", "title": "...", "alt": "...", "title_en": "...", "alt_en": "..."}'
 CLAUDE_REPLY = "confidence에는 고른 방이 맞다고 얼마나 확신하는지 0에서 1 사이의 숫자를 쓰세요."
+
+# Picking the cover (scripts/cover.py): every photo on show goes before COVER_PICK; to set only where a cover a person
+# picked is cropped, that one photo goes before COVER_FOCUS.
+COVER_HEAD = "당신은 사진 전시 사이트 Nocturne의 큐레이터입니다. 아래는 지금 전시 중인 사진들이고, 각 사진 앞에 이름과 제목, 방이 있습니다."
+COVER_FOCUS_HEAD = "당신은 사진 전시 사이트 Nocturne의 큐레이터입니다. 아래 사진을 사이트 첫 화면 맨 위에 대표 사진으로 크게 겁니다."
+COVER_FRAMES = ("대표 사진은 넓은 화면에서는 가로가 조금 긴 틀(약 7:5), 폰에서는 세로 4:5 틀에 맞춰 잘립니다.")
+COVER_WHERE = ("focus_x, focus_y에는 잘릴 때 꼭 남길 곳의 위치를 0에서 1 사이로 쓰세요. "
+               "사진 왼쪽 위가 (0, 0), 오른쪽 아래가 (1, 1)입니다.")
+COVER_PICK = f"""사이트 첫 화면 맨 위에 크게 걸 대표 사진 한 장을 고르세요.
+- 혼자서 이 전시 전체를 대표할 만큼 인상이 강한 사진을 고르세요.
+- {COVER_FRAMES} 두 틀 모두로 잘려도 주제가 살아 있는 사진을 고르세요.
+- {COVER_WHERE}
+- file에는 고른 사진의 이름을 쓰세요."""
+COVER_KEEP = "지금 대표 사진은 {file}입니다. 다른 사진이 뚜렷이 낫지 않으면 지금 사진을 그대로 고르세요."
+COVER_FOCUS = f"""{COVER_FRAMES} 잘려도 주제가 살아 있게 하세요.
+- {COVER_WHERE}
+- file에는 이 사진의 이름을 쓰세요."""
 
 
 class CuratorError(Exception):
@@ -353,6 +371,34 @@ def is_claude_failure(message):
     return isinstance(message, str) and (message in _CLAUDE_FAILURES or message.startswith((CLAUDE_STATUS, CLAUDE_UNREADABLE)))
 
 
+def _claude_reply(client, model, schema, content, refused):
+    """Ask Claude once (the SDK retries transient failures itself) and return (the reply's text, the model that answered,
+    which may be a fallback). `refused` is the message for a refusal. Every failure is a CuratorError with a short Korean
+    message, never the SDK's text or the reply."""
+    try:
+        response = client.beta.messages.create(
+            model=model,
+            max_tokens=CLAUDE_MAX_TOKENS,
+            betas=[CLAUDE_BETA],
+            fallbacks="default",
+            output_config={"effort": "low", "format": {"type": "json_schema", "schema": schema}},
+            messages=[{"role": "user", "content": content}],
+        )
+    except Exception as err:
+        failure = _claude_failure(err)
+        if failure is None:
+            raise
+        raise failure from None
+    if response.stop_reason == "refusal":
+        raise CuratorError(refused, retry=False)
+    if response.stop_reason == "max_tokens":
+        raise CuratorError(CLAUDE_CUT_OFF)
+    text = next((block.text for block in response.content if block.type == "text"), None)  # thinking blocks may come first
+    if text is None:
+        raise _unreadable("답에 글이 없어요")
+    return text, getattr(response, "model", None) or model
+
+
 def claude_draft(image, data, grayscale, *, model=None, client=None):
     """Like `draft`, but the Claude API answers: {"room", "title", "alt", "title_en", "alt_en", "confidence", "model"}.
     One request (the SDK retries transient failures itself). Every failure is a CuratorError with a short Korean
@@ -362,30 +408,8 @@ def claude_draft(image, data, grayscale, *, model=None, client=None):
     if client is None:
         client = _claude_client()
     room_ids = [room["id"] for room in data["rooms"]]
-    picture = base64.b64encode(Path(image).read_bytes()).decode("ascii")
-    try:
-        response = client.beta.messages.create(
-            model=model,
-            max_tokens=CLAUDE_MAX_TOKENS,
-            betas=[CLAUDE_BETA],
-            fallbacks="default",
-            output_config={"effort": "low", "format": {"type": "json_schema", "schema": claude_schema(room_ids)}},
-            messages=[{"role": "user", "content": [
-                {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": picture}},
-                {"type": "text", "text": build_prompt(data, CLAUDE_REPLY)}]}],
-        )
-    except Exception as err:
-        failure = _claude_failure(err)
-        if failure is None:
-            raise
-        raise failure from None
-    if response.stop_reason == "refusal":
-        raise CuratorError(CLAUDE_REFUSED, retry=False)
-    if response.stop_reason == "max_tokens":
-        raise CuratorError(CLAUDE_CUT_OFF)
-    text = next((block.text for block in response.content if block.type == "text"), None)  # thinking blocks may come first
-    if text is None:
-        raise _unreadable("답에 글이 없어요")
+    content = [_image_block(Path(image).read_bytes()), {"type": "text", "text": build_prompt(data, CLAUDE_REPLY)}]
+    text, answered = _claude_reply(client, model, claude_schema(room_ids), content, CLAUDE_REFUSED)
     try:
         parsed = parse_reply(text, room_ids)
         reply = _load_reply(text)
@@ -395,4 +419,55 @@ def claude_draft(image, data, grayscale, *, model=None, client=None):
         raise _unreadable("모르는 방이에요")
     return {"room": parsed["room"], "title": parsed["title"], "alt": finish_alt(parsed["alt"], grayscale),
             "title_en": parsed["title_en"], "alt_en": finish_alt_en(parsed["alt_en"], grayscale),
-            "confidence": claude_confidence(reply.get("confidence")), "model": getattr(response, "model", None) or model}
+            "confidence": claude_confidence(reply.get("confidence")), "model": answered}
+
+
+def _image_block(jpeg):
+    return {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": base64.b64encode(jpeg).decode("ascii")}}
+
+
+def cover_schema(files):
+    """The JSON Schema of a cover reply: one of `files`, and where to keep it when it is cropped."""
+    return {"type": "object",
+            "properties": {"file": {"type": "string", "enum": list(files)}, "focus_x": {"type": "number"},
+                           "focus_y": {"type": "number"}},
+            "required": ["file", "focus_x", "focus_y"],
+            "additionalProperties": False}
+
+
+def cover_focus(value):
+    """One coordinate of a cover focus: inside 0 to 1, two decimals, 0 and 1 as ints (they print alike in Python and
+    JavaScript); 0.5 (the middle) when it is not a number."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value != value:
+        return 0.5
+    value = round(min(1.0, max(0.0, value)), 2)
+    return int(value) if value == int(value) else value
+
+
+def claude_pick_cover(candidates, current, *, focus_only=False, model=None, client=None):
+    """Claude names the cover among `candidates` and where to crop it: {"file", "focus": [x, y], "model"}.
+
+    candidates: [{"file", "title", "room", "image": JPEG bytes}] in page order, each shown after a line naming it.
+    current: the cover now (it is told to keep it unless another photo is clearly better), or None. focus_only: the
+    one candidate is a cover a person picked; only where to crop it is asked. Failures are CuratorErrors, as in
+    claude_draft; a refusal is CLAUDE_COVER_REFUSED. `model` in the result is the model that really answered."""
+    model = model or claude_model_name()
+    if client is None:
+        client = _claude_client()
+    files = [c["file"] for c in candidates]
+    content = [{"type": "text", "text": COVER_FOCUS_HEAD if focus_only else COVER_HEAD}]
+    for c in candidates:
+        content += [{"type": "text", "text": f"사진 {c['file']}: {c['title']} (방: {c['room']})"}, _image_block(c["image"])]
+    ask = COVER_FOCUS if focus_only else COVER_PICK
+    if not focus_only and current in files:
+        ask += "\n" + COVER_KEEP.format(file=current)
+    content.append({"type": "text", "text": ask})
+    text, answered = _claude_reply(client, model, cover_schema(files), content, CLAUDE_COVER_REFUSED)
+    try:
+        reply = _load_reply(text)
+    except ValueError as err:
+        raise _unreadable(str(err).partition(":")[0]) from None
+    if reply.get("file") not in files:
+        raise _unreadable("모르는 사진이에요")
+    return {"file": reply["file"], "focus": [cover_focus(reply.get("focus_x")), cover_focus(reply.get("focus_y"))],
+            "model": answered}
