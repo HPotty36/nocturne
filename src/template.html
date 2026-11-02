@@ -14,12 +14,14 @@ __ALTERNATES__
 <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400&display=swap" crossorigin>
+<link rel="stylesheet" href="__TITLEFONT__" crossorigin>
 <style>
-/* Nocturne: a black exhibition room in one serif. From 960px a narrow column (name, rooms, fine
-   print) stays at the left while the photos scroll on the right; below that a one-line bar keeps the
-   name, the language link and a drop-down room index at the top. A cover print fits the first screen,
-   then each room hangs its prints at their own ratios in justified rows, each with a "title, date"
-   label. Strong and dim ink do the work an accent colour would: there is none. */
+/* Nocturne: a black exhibition room in one serif. From 960px a narrow column (the name set large and
+   vertically, the rooms, fine print) stays at the left while the photos scroll on the right; below that a
+   one-line bar keeps the name, the language link and a drop-down room index at the top. A cover print
+   fills its frame, then each room hangs its prints at their own ratios in justified rows, each with a
+   "title, date" label, while the room's name stands vertically beside them and follows them down.
+   Strong and dim ink do the work an accent colour would: there is none. */
 :root {
   color-scheme: dark;
   --ground: #000;
@@ -74,7 +76,7 @@ h2 { font: inherit; }
   padding: env(safe-area-inset-top, 0px) var(--edge) 0;
   background: var(--ground);
 }
-.mark { margin-right: auto; padding-block: 9px; }  /* 40px to a thumb, and room for the focus ring inside the bar */
+.mark { margin-right: auto; padding-block: 9px; font-size: 20px; line-height: 1.2; }  /* 42px to a thumb, and room for the focus ring inside the bar */
 .lang { order: 1; padding-block: 9px; color: var(--ink-dim); }
 .side nav { order: 2; }
 .menu summary {
@@ -102,35 +104,49 @@ h2 { font: inherit; }
 
 .main { padding: var(--lead) var(--edge) 0; container-type: inline-size; }
 
-/* ---------- cover: as wide as the column, never taller than the first screen ---------- */
-.cover { margin-bottom: clamp(72px, 9vw, 120px); }
+/* ---------- cover: fills its frame (a phone: edge to edge, 4:5; from 960px: the column, down to the bottom of
+   the first screen), cropped around the focus the AI chose (--fx --fy); the viewer shows it whole ---------- */
+.cover { margin: 0 calc(var(--edge) * -1) clamp(72px, 9vw, 120px); }
+.cover .label { padding-inline: var(--edge); }
 .cover-btn {
   display: block;
   width: 100%;
+  aspect-ratio: 4 / 5;
   padding: 0;
   border: 0;
   cursor: zoom-in;
   background: var(--c, var(--wall));
 }
-@supports (width: 1cqi) {
-  .cover-btn { width: min(100cqi, (100svh - var(--bar) - 8rem) * var(--r)); }
-  .cover { width: min-content; max-width: 100%; }  /* a tall print is narrower than the column: its label wraps at the print's edge */
+.cover-btn img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: var(--fx, 50%) var(--fy, 50%);
 }
-.cover-btn img { display: block; width: 100%; height: auto; }
 
-/* ---------- rooms: one head line (name, count, span), then the hang ---------- */
-.room { scroll-margin-top: calc(var(--bar) + env(safe-area-inset-top, 0px) + var(--lead)); }  /* clear of the bar */
-.room + .room { margin-top: clamp(64px, 8vw, 104px); }
+/* ---------- rooms: the name stands vertically in a narrow column at the left of the hang and follows the room
+   down (under the bar on a phone); its count and span run on below it ---------- */
+.room {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: start;
+  scroll-margin-top: calc(var(--bar) + env(safe-area-inset-top, 0px) + var(--lead));  /* clear of the bar */
+}
+.room + .room { margin-top: clamp(96px, 11vw, 160px); }
 .room:last-of-type { min-height: 50vh; min-height: 50svh; }  /* tall enough to reach the middle of the screen and be marked */
 .room-head {
+  position: sticky;
+  top: calc(var(--bar) + env(safe-area-inset-top, 0px) + var(--lead));
+  writing-mode: vertical-rl;
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  column-gap: 8px;
-  margin-bottom: 16px;
+  align-items: flex-start;
+  gap: 10px;
 }
-.room-count { color: var(--ink-dim); }
-.room-span { margin-left: auto; font-size: 12px; color: var(--ink-dim); }
+.room-head h2 { font-size: 28px; font-weight: 300; line-height: 1; }
+.room-meta { display: flex; gap: 10px; font-size: 12px; color: var(--ink-dim); }
+.room-count { text-combine-upright: digits 2; }  /* the count's digits stand upright; the span lies on its side */
 
 /* justified hang: JS sets each print's width and its photo's height (then adds .is-laid);
    without JS every photo stands at a fixed height in its own ratio */
@@ -185,15 +201,24 @@ h2 { font: inherit; }
     align-items: flex-start;
     height: 100vh;
     height: 100svh;
-    padding: calc(var(--edge) - 6px) var(--bleed) var(--edge);  /* the name's capitals line up with the top of the cover */
+    padding: var(--edge) var(--bleed);  /* the name starts level with the top of the cover */
     margin-inline: calc(var(--bleed) * -1);  /* the padding is room for the bullet and focus rings only: the text stays put */
     overflow-y: auto;  /* a low window or many rooms: this column scrolls, so its fine print is never cut off */
     scrollbar-width: thin;
     scrollbar-color: var(--ink-dim) transparent;
   }
   .mark, .lang { margin-right: 0; padding-block: 0; }
+  /* the name, vertical and large; it follows the window's height too, so the column's fine print still fits a low
+     window (the name is about 4.6em long, 22rem is what the rest of the column needs) */
+  .side .mark {
+    writing-mode: vertical-rl;
+    font-size: max(56px, min(7.6vw, 124px, (100svh - 22rem) / 4.6));
+    font-weight: 300;
+    line-height: 1;
+    margin-left: -0.06em;  /* the first letter's side bearing: its stem lines up with the room list */
+  }
   .side nav, .lang { order: 0; }
-  .side nav { align-self: stretch; margin-top: 28px; }
+  .side nav { align-self: stretch; margin-top: 36px; }
   .menu { display: none; }
   .rooms-side { display: block; }
   .rooms-side a { position: relative; display: block; padding-block: 3px; color: var(--ink-dim); }
@@ -207,6 +232,12 @@ h2 { font: inherit; }
   .fine { display: block; margin-top: auto; font-size: 12px; color: var(--ink-dim); }
   .main { padding: var(--lead) 0 clamp(64px, 8vw, 104px); }
   .foot { display: none; }
+  .cover { margin-inline: 0; }
+  .cover .label { padding-inline: 0; }
+  .cover-btn { aspect-ratio: auto; height: calc(100svh - 2 * var(--edge) - 28px); }  /* the label's line stays on the first screen */
+  .room { column-gap: clamp(20px, 2.4vw, 36px); }
+  .room-head, .room-meta { gap: 14px; }
+  .room-head h2 { font-size: clamp(40px, 4vw, 60px); }
 }
 
 /* ---------- viewing room: the photo as large as it fits, one line of text under it ---------- */
@@ -323,7 +354,7 @@ __ROOMS__
   function targetHeight(w) {
     if (w >= 1100) return 300;
     if (w >= 720) return 240;
-    return 180;
+    return w < 400 ? 150 : 180;  // a phone's hang is narrower by the room name's column: keep two prints a row
   }
 
   function layoutHang(hang, W) {

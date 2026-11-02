@@ -17,6 +17,7 @@ import json
 import re
 import shutil
 import sys
+import urllib.parse
 from pathlib import Path
 
 from PIL import Image
@@ -56,6 +57,9 @@ PAGES = {
 }
 
 COPY_PATHS = {"thumb": photolib.thumb_path, "full": photolib.full_path}
+
+# Weight 300 sets only the site name and the room names, so the page asks Google Fonts for just their letters.
+TITLE_FONT = "https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300&text={text}&display=swap"
 
 
 class BuildError(Exception):
@@ -149,8 +153,19 @@ def print_html(p, f, lang, base, lazy):
     )
 
 
-def cover_html(p, f, lang, base):
-    """The cover print: the full-size copy, labelled like any print (title, date; no camera)."""
+def focus_style(focus):
+    """"--fx:42%;--fy:50%" for a cover_focus [x, y] (0 to 1, from the top left; kept inside 0 to 100%), or "" when
+    there is none or it is not two numbers: the stylesheet then keeps the middle."""
+    if not (isinstance(focus, list) and len(focus) == 2
+            and all(isinstance(v, (int, float)) and not isinstance(v, bool) and v == v for v in focus)):
+        return ""
+    x, y = (min(100.0, max(0.0, round(v * 100, 2))) for v in focus)
+    return f"--fx:{x:g}%;--fy:{y:g}%;"
+
+
+def cover_html(p, f, lang, base, focus=None):
+    """The cover print: the full-size copy, labelled like any print (title, date; no camera). It fills its frame,
+    cropped around `focus` (photos.json cover_focus)."""
     name, date = esc(p["file"]), p.get("date") or ""
     title, title_ko = pick(p, "title", lang)
     alt, alt_ko = pick(p, "alt", lang)
@@ -158,7 +173,7 @@ def cover_html(p, f, lang, base):
     alt_lang = ' lang="ko"' if alt_ko else ""
     return (
         f'<figure class="cover"><button class="cover-btn" type="button" data-open="{name}" '
-        f'style="--c:{f["col"]};--r:{f["w"]}/{f["h"]}" aria-label="{esc(view)}" aria-describedby="alt-{name}">'
+        f'style="--c:{f["col"]};--r:{f["w"]}/{f["h"]};{focus_style(focus)}" aria-label="{esc(view)}" aria-describedby="alt-{name}">'
         f'<img src="{esc(base + f["full"])}" alt="{esc(alt)}"{alt_lang} '
         f'width="{f["w"]}" height="{f["h"]}" fetchpriority="high"></button>{label_html(title, title_ko, date)}</figure>'
     )
@@ -169,14 +184,23 @@ def room_name(room, lang):
     return (room.get("name_en") or room["name"]) if lang == "en" else room["name"]
 
 
+def title_font_href(data):
+    """The weight-300 stylesheet for the site name and every room name (Korean and English), asking for only their
+    letters: each once, in code point order, percent-encoded."""
+    names = [data["site"]["title"]] + [room.get(key) or "" for room in data["rooms"] for key in ("name", "name_en")]
+    text = "".join(sorted(set("".join(names))))
+    return TITLE_FONT.format(text=urllib.parse.quote(text, safe=""))
+
+
 def room_html(room, facts, lang, base, first):
-    """One room: a one-line head (name, count, span) and the hang of its prints. Only the first room loads eagerly."""
+    """One room: its head (the name, then count and span) and the hang of its prints. Only the first room loads eagerly."""
     count = STRINGS[lang]["count"].format(n=len(room["photos"]))
     span = room_span(room["photos"])
     span_html = f'<span class="room-span">{esc(span)}</span>' if span else ""
     prints = "".join(f"\n  {print_html(p, facts[p['file']], lang, base, not first)}" for p in room["photos"])
     return (f'<section class="room" id="{esc(room["id"])}"><header class="room-head"><h2>{esc(room_name(room, lang))}</h2>'
-            f'<span class="room-count">{esc(count)}</span>{span_html}</header><div class="hang">{prints}\n</div></section>')
+            f'<p class="room-meta"><span class="room-count">{esc(count)}</span>{span_html}</p></header>'
+            f'<div class="hang">{prints}\n</div></section>')
 
 
 def render_page(template, data, facts, lang, redirect):
@@ -194,13 +218,14 @@ def render_page(template, data, facts, lang, redirect):
     for room in rooms:
         for p in room["photos"]:
             if p["file"] == data.get("cover"):
-                cover = cover_html(p, facts[p["file"]], lang, base)
+                cover = cover_html(p, facts[p["file"]], lang, base, data.get("cover_focus"))
     description = site["description_en"] if lang == "en" and site.get("description_en") else site["description"]
     values = {
         "__LANG__": lang,
         "__REDIRECT__": f"<script>{redirect}</script>" if lang == "ko" else "",
         "__DESCRIPTION__": esc(description.format(total=total)),
         "__TITLE__": esc(site["title"]),
+        "__TITLEFONT__": esc(title_font_href(data)),
         "__ALTERNATES__": "\n".join(f'<link rel="alternate" hreflang="{code}" href="{href}">'
                                     for code, href in zip(("ko", "en", "x-default"), page["alternates"])),
         "__NAVLABEL__": esc(strings["nav"]),

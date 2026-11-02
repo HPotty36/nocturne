@@ -4,6 +4,7 @@ import re
 import shutil
 import tempfile
 import unittest
+import urllib.parse
 from pathlib import Path
 
 import helpers  # puts scripts/ on sys.path
@@ -27,8 +28,8 @@ class BuildTests(unittest.TestCase):
     def test_page(self):
         html = self.html()
         for s in ('<html lang="ko">', "<title>Nocturne</title>", '<a class="mark" href="#top">Nocturne</a>',
-                  '<li><a href="#river">강</a></li>', '<h2>강</h2><span class="room-count">2점</span>',
-                  '<h2>밤</h2><span class="room-count">1점</span>', '<summary>목록</summary>', '<nav aria-label="전시실">',
+                  '<li><a href="#river">강</a></li>', '<h2>강</h2><p class="room-meta"><span class="room-count">2점</span></p>',
+                  '<h2>밤</h2><p class="room-meta"><span class="room-count">1점</span>', '<summary>목록</summary>', '<nav aria-label="전시실">',
                   '<a class="lang" href="en/" lang="en" hreflang="en">English</a>', '사진 3점<br>© 2026 Nocturne<br>'):
             self.assertIn(s, html)
         for gone in ("room-num", "room-en", "room-note", "lede", "River", "Night", "label-meta", "data-meta", "lb-btn"):
@@ -39,7 +40,7 @@ class BuildTests(unittest.TestCase):
 
     def test_english_page(self):
         html = self.en()
-        for s in ('<html lang="en">', '<li><a href="#river">River</a></li>', '<h2>Night</h2><span class="room-count">1</span>',
+        for s in ('<html lang="en">', '<li><a href="#river">River</a></li>', '<h2>Night</h2><p class="room-meta"><span class="room-count">1</span>',
                   '<summary>Index</summary>', '<nav aria-label="Rooms">', 'aria-label="Photo viewer"', '>Previous<', '>Next<', '>Close<',
                   '<a class="lang" href="../?lang=ko" lang="ko" hreflang="ko">한국어</a>', '3 photographs<br>',
                   '<a class="foot-admin" href="../admin/">Admin</a>', '<meta name="description" content="3 photographs">'):
@@ -80,8 +81,8 @@ class BuildTests(unittest.TestCase):
         self.assertEqual(span([{"date": "2026.09.03"}, {}, {"date": "2025.11.30"}]), "2025.11 – 2026.09")
         self.assertEqual(span([{"date": "알 수 없음"}, {}]), "")
         html = self.html()
-        self.assertIn('<span class="room-count">1점</span><span class="room-span">2025.11</span></header>', html)
-        self.assertIn('<span class="room-count">2점</span></header>', html)  # river: no dates, no span
+        self.assertIn('<span class="room-count">1점</span><span class="room-span">2025.11</span></p></header>', html)
+        self.assertIn('<span class="room-count">2점</span></p></header>', html)  # river: no dates, no span
 
     def test_labels_and_data(self):
         html = self.html()
@@ -109,6 +110,35 @@ class BuildTests(unittest.TestCase):
         self.assertIn('data-open="a1"', cover)
         self.assertIn('<figcaption class="label">스카이라인</figcaption>', cover)
 
+    def test_cover_focus(self):
+        style = lambda: re.search(r'<button class="cover-btn"[^>]*style="([^"]*)"', self.html()).group(1)
+        self.assertIn("--fx:42%;--fy:50%", style())  # SITE's [0.42, 0.5]
+        for value, want in (([1.5, -1], "--fx:100%;--fy:0%"), ("x", None), ([0.5], None), (None, None)):
+            data = photolib.load_data(self.root)
+            if value is None: data.pop("cover_focus", None)
+            else: data["cover_focus"] = value
+            photolib.save_data(self.root, data)
+            if want: self.assertIn(want, style())
+            else: self.assertNotIn("--fx", style())
+
+    def test_title_font_link(self):
+        for page in (self.html(), self.en()):
+            found = re.search(r'<link rel="stylesheet" href="https://fonts\.googleapis\.com/css2\?family=Noto\+Serif\+KR:wght@300'
+                              r'&amp;text=([^"&]+)&amp;display=swap" crossorigin>', page)
+            self.assertIsNotNone(found)
+            self.assertEqual(urllib.parse.unquote(found.group(1)), "".join(sorted(set("Nocturne강River밤Night"))))
+
+    def test_title_font_link_encodes_odd_names(self):
+        data = photolib.load_data(self.root)
+        data["rooms"][0]["name"] = 'A&B "#1"'
+        href = build.title_font_href(data)
+        text = href.split("&text=", 1)[1].rsplit("&display=swap", 1)[0]
+        for raw in "&# \"":
+            self.assertNotIn(raw, text)
+        self.assertEqual(urllib.parse.unquote(text), "".join(sorted(set('NocturneA&B "#1"River밤Night'))))
+        photolib.save_data(self.root, data)
+        self.assertNotIn('"#1"', re.search(r'<link rel="stylesheet" href="[^"]*wght@300[^"]*"', self.html()).group(0))
+
     def test_cover_missing(self):
         for value in ("gone", None):
             data = photolib.load_data(self.root)
@@ -122,7 +152,7 @@ class BuildTests(unittest.TestCase):
         data["rooms"].append({"id": "new", "name": "새 방", "name_en": "New", "note": "n", "photos": []})
         photolib.save_data(self.root, data)
         html = self.html()
-        self.assertIn('<h2>새 방</h2><span class="room-count">0점</span></header><div class="hang">', html)
+        self.assertIn('<h2>새 방</h2><p class="room-meta"><span class="room-count">0점</span></p></header><div class="hang">', html)
         self.assertIn('<li><a href="#new">새 방</a></li>', html)
 
     def test_versioned_urls(self):
@@ -150,10 +180,19 @@ class BuildTests(unittest.TestCase):
         # from 960px the buttons are 24px tall; a finger on a big screen still gets 40px
         self.assertRegex(self.css(), r"@media \(pointer: coarse\) \{\s*\.lb-link \{[^}]*min-height: 40px;")
 
-    def test_cover_label_is_never_wider_than_the_print(self):
+    def test_vertical_titles_css(self):
         css = self.css()
-        self.assertRegex(css, r"@supports \(width: 1cqi\) \{[^@]*\.cover \{[^}]*width: min-content;[^}]*max-width: 100%;")
-        self.assertIn(".cover-btn { width: min(100cqi,", css)  # the print itself is sized in the same block
+        self.assertRegex(css, r"\.room-head \{[^}]*position: sticky;")
+        self.assertRegex(css, r"\.room-head \{[^}]*writing-mode: vertical-rl;")
+        self.assertRegex(css, r"(?s)@media \(min-width: 960px\) \{.*?\.side \.mark \{[^}]*writing-mode: vertical-rl;")
+        for s in ("font-size: max(56px, min(7.6vw, 124px, (100svh - 22rem) / 4.6));", "font-size: clamp(40px, 4vw, 60px);",
+                  "text-combine-upright: digits 2;", "aspect-ratio: 4 / 5;", "font-weight: 300;"):
+            self.assertIn(s, css)
+        self.assertRegex(css, r"\.cover-btn img \{[^}]*object-fit: cover;[^}]*object-position: var\(--fx, 50%\) var\(--fy, 50%\);")
+
+    def test_phone_rows_lower_target(self):
+        # the name column takes room from a phone's hang: a lower target keeps two prints a row
+        self.assertIn("return w < 400 ? 150 : 180;", self.html())
 
     def test_side_column_scrolls_when_the_window_is_short(self):
         side = re.search(r"\.side \{[^}]*overflow-y: auto;[^}]*\}", self.css())
@@ -321,6 +360,7 @@ class TokenTests(unittest.TestCase):
                      "letter-spacing", "text-transform", "lb-btn", "<svg", "사진을 누르면"):
             self.assertNotIn(gone, text)
         self.assertIn('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400&display=swap" crossorigin>', text)
+        self.assertIn('<link rel="stylesheet" href="__TITLEFONT__" crossorigin>', text)  # weight 300, only the title letters
         self.assertIn('<meta name="theme-color" content="#000">', text)
         self.assertIn("localStorage.setItem('nocturne.lang'", text)  # the toggle remembers the choice
 
