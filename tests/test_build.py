@@ -28,8 +28,8 @@ class BuildTests(unittest.TestCase):
     def test_page(self):
         html = self.html()
         for s in ('<html lang="ko">', "<title>Nocturne</title>", '<a class="mark" href="#top">Nocturne</a>',
-                  '<li><a href="#river">강</a></li>', '<h2>강</h2><p class="room-meta"><span class="room-count"><span class="room-n">2</span>점</span></p>',
-                  '<h2>밤</h2><p class="room-meta"><span class="room-count"><span class="room-n">1</span>점</span>', '<summary>목록</summary>', '<nav aria-label="전시실">',
+                  '<li><a href="#river">강</a></li>', '<h2>강</h2><p class="room-meta"><span class="room-count">2점</span></p>',
+                  '<h2>밤</h2><p class="room-meta"><span class="room-count">1점</span>', '<summary>목록</summary>', '<nav aria-label="전시실">',
                   '<a class="lang" href="en/" lang="en" hreflang="en">English</a>', '사진 3점<br>© 2026 Nocturne<br>'):
             self.assertIn(s, html)
         for gone in ("room-num", "room-en", "room-note", "lede", "River", "Night", "label-meta", "data-meta", "lb-btn"):
@@ -40,7 +40,7 @@ class BuildTests(unittest.TestCase):
 
     def test_english_page(self):
         html = self.en()
-        for s in ('<html lang="en">', '<li><a href="#river">River</a></li>', '<h2>Night</h2><p class="room-meta"><span class="room-count"><span class="room-n">1</span></span>',
+        for s in ('<html lang="en">', '<li><a href="#river">River</a></li>', '<h2>Night</h2><p class="room-meta"><span class="room-count">1</span>',
                   '<summary>Index</summary>', '<nav aria-label="Rooms">', 'aria-label="Photo viewer"', '>Previous<', '>Next<', '>Close<',
                   '<a class="lang" href="../?lang=ko" lang="ko" hreflang="ko">한국어</a>', '3 photographs<br>',
                   '<a class="foot-admin" href="../admin/">Admin</a>', '<meta name="description" content="3 photographs">'):
@@ -81,8 +81,8 @@ class BuildTests(unittest.TestCase):
         self.assertEqual(span([{"date": "2026.09.03"}, {}, {"date": "2025.11.30"}]), "2025.11 – 2026.09")
         self.assertEqual(span([{"date": "알 수 없음"}, {}]), "")
         html = self.html()
-        self.assertIn('<span class="room-count"><span class="room-n">1</span>점</span><span class="room-span">2025.11</span></p></header>', html)
-        self.assertIn('<span class="room-count"><span class="room-n">2</span>점</span></p></header>', html)  # river: no dates, no span
+        self.assertIn('<span class="room-count">1점</span><span class="room-span">2025.11</span></p></header>', html)
+        self.assertIn('<span class="room-count">2점</span></p></header>', html)  # river: no dates, no span
 
     def test_labels_and_data(self):
         html = self.html()
@@ -152,7 +152,7 @@ class BuildTests(unittest.TestCase):
         data["rooms"].append({"id": "new", "name": "새 방", "name_en": "New", "note": "n", "photos": []})
         photolib.save_data(self.root, data)
         html = self.html()
-        self.assertIn('<h2>새 방</h2><p class="room-meta"><span class="room-count"><span class="room-n">0</span>점</span></p></header><div class="hang">', html)
+        self.assertIn('<h2>새 방</h2><p class="room-meta"><span class="room-count">0점</span></p></header><div class="hang">', html)
         self.assertIn('<li><a href="#new">새 방</a></li>', html)
 
     def test_versioned_urls(self):
@@ -190,16 +190,12 @@ class BuildTests(unittest.TestCase):
             self.assertIn(s, css)
         self.assertRegex(css, r"\.cover-btn img \{[^}]*object-fit: cover;[^}]*object-position: var\(--fx, 50%\) var\(--fy, 50%\);")
 
-    def test_count_stands_upright(self):
-        # `text-combine-upright: digits 2` is taken by no browser: the number has its own span instead
+    def test_room_meta_lies_on_its_side(self):
+        # the name stands; "10점" and the span lie together as one line (no upright number beside a lying span)
         css = self.css()
-        self.assertNotIn("digits 2", css)
-        self.assertRegex(css, r"\.room-n \{ text-combine-upright: all; \}")
-        self.assertRegex(css, r"\.room-n\.is-long \{ text-combine-upright: none; text-orientation: upright; \}")
-        self.assertEqual(build.count_html("ko", 7), '<span class="room-n">7</span>점')
-        self.assertEqual(build.count_html("ko", 99), '<span class="room-n">99</span>점')
-        self.assertEqual(build.count_html("ko", 100), '<span class="room-n is-long">100</span>점')
-        self.assertEqual(build.count_html("en", 12), '<span class="room-n">12</span>')
+        self.assertRegex(css, r"\.room-meta \{[^}]*text-orientation: sideways;")
+        self.assertNotIn("text-combine-upright", css)
+        self.assertNotIn("room-n", self.html())
 
     def test_phone_cover_never_taller_than_the_first_screen(self):
         # 4:5 of the full width would be several screens tall on a phone held sideways or a narrow desktop window

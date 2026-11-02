@@ -146,12 +146,9 @@ h2 { font: inherit; }
   gap: 10px;
 }
 .room-head h2 { font-size: 28px; font-weight: 300; line-height: 1; }
-.room-meta { display: flex; gap: 10px; font-size: 12px; color: var(--ink-dim); }
-/* the count's number stands upright; the span lies on its side. The `digits` form of text-combine-upright would say
-   this on .room-count alone, but no browser takes it, so the number has its own span: two digits share one
-   character's space, three or more stack */
-.room-n { text-combine-upright: all; }
-.room-n.is-long { text-combine-upright: none; text-orientation: upright; }
+/* only the name stands; the count and the span under it lie on their side together, one line like the small print
+   on a book's spine (Hangul too, so "10점" never mixes an upright word with a lying number) */
+.room-meta { display: flex; gap: 10px; font-size: 12px; color: var(--ink-dim); text-orientation: sideways; }
 
 /* justified hang: JS sets each print's width and its photo's height (then adds .is-laid);
    without JS every photo stands at a fixed height in its own ratio */
