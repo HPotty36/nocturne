@@ -257,6 +257,20 @@ test('대표로 지정 is one commit with the photo title', async () => {
   assert.equal(fake.data().cover, 'n1');
   assert.equal(fake.commits[0].message, '대표 사진 변경: 공중전화');
   assert.equal(store.data.cover, 'n1');
+  assert.deepEqual(fake.data().cover_pick, { by: 'person' }); // the AI leaves a cover a person picked
+  assert.equal('cover_focus' in fake.data(), false);
+});
+
+test('AI에게 맡기기 is one commit that hands the cover back to the AI', async () => {
+  const pinned = site();
+  pinned.cover_pick = { by: 'person' };
+  const { fake, store } = await opened({ [DATA]: pinned });
+  assert.equal(await store.releaseCover(), 'commit-1');
+  assert.equal(fake.commits[0].message, '대표 사진: AI에게 맡김');
+  assert.equal('cover_pick' in fake.data(), false);
+  assert.equal(fake.data().cover, 'a1');
+  assert.deepEqual(fake.data().cover_focus, [0.42, 0.5]);
+  assert.equal('cover_pick' in store.data, false);
 });
 
 test('삭제 takes out the photo, both site copies and a redraft still waiting for it, in one commit', async () => {

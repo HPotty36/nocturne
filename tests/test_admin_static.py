@@ -88,7 +88,8 @@ class AdminStaticTests(unittest.TestCase):
               "AI 실패", "다시 시도", "직접 입력해서 게시", "버리기", "게시됨", "흑백 감지", "위치 정보 삭제됨",
               "AI가 오래 걸리고 있어요", "버려도 올린 사진은 공개 저장소의 기록에 남아요",
               "영어 제목", "영어 설명", "AI 한국어", "AI 영어", "다듬기 대기",
-              "공유한 사진", "올리기", "로그인하면 올릴 수 있어요"]
+              "공유한 사진", "올리기", "로그인하면 올릴 수 있어요",
+              "AI에게 맡기기", "AI가 고름", "직접 고름", "AI가 고를 차례", "AI에게 맡겼어요. 30분 안에 AI가 고릅니다"]
     def test_labels(self):
         t = "".join(p.read_text(encoding="utf-8") for p in js_files()) + (helpers.ROOT / "admin" / "index.html").read_text(encoding="utf-8")
         for s in self.LABELS:

@@ -1,6 +1,7 @@
 // The "전시 중" tab: every exhibited photo by room, with its badges, room, title and description (Korean, and the
-// optional English ones), and four actions:
-// 저장, 대표로 지정, 삭제 (after a confirm dialog) and AI로 다시 쓰기 (a redraft item in the queue).
+// optional English ones), and five actions:
+// 저장, 대표로 지정, 삭제 (after a confirm dialog), AI로 다시 쓰기 (a redraft item in the queue) and, on a cover a
+// person picked, AI에게 맡기기 (the AI picks the cover again on its next run).
 //
 // ExhibitStore (DOM-free, tested in Node) holds photos.json as the page knows it. Each change is one commit whose
 // build re-reads src/photos.json at the commit it builds on and applies the change with gallery.js, and 저장 sends
@@ -11,7 +12,9 @@
 // page through textContent and value.
 
 import { AuthError, GitHubError } from '../lib/github.js';
-import { badges, COVER_BADGE, deletePhoto, GalleryError, REVIEW_BADGE, saveEdits, serialize, setCover } from '../lib/gallery.js';
+import {
+  badges, COVER_BADGE, coverBadge, deletePhoto, GalleryError, releaseCover, REVIEW_BADGE, saveEdits, serialize, setCover,
+} from '../lib/gallery.js';
 import { newItem } from '../lib/queue.js';
 
 const DATA = 'src/photos.json';
@@ -26,6 +29,7 @@ const REDRAFTING = 'AI가 다시 쓰는 중…';
 const REDRAFTED = 'AI가 새로 썼어요';
 const DELETE_TEXT = '이 사진을 전시에서 뺄까요? 사이트용 사본이 지워집니다. 이미 게시한 사진은 GitHub 기록에 남습니다.';
 const COVER_NOTE = '대표 사진은 다른 사진을 대표로 지정한 뒤 지울 수 있어요';
+const RELEASED = 'AI에게 맡겼어요. 30분 안에 AI가 고릅니다'; // the next Draft run; this page may not start one
 const NO_DATA = 'src/photos.json을 찾을 수 없어요';
 const UNKNOWN_PROBLEM = '문제가 생겼어요. 새로고침 후 다시 해 주세요';
 
@@ -118,6 +122,11 @@ export class ExhibitStore {
 
   cover(file) {
     return this.#serial(() => this.#commitPhotos(`대표 사진 변경: ${titleOf(this.data, file)}`, (data) => setCover(data, file)));
+  }
+
+  /** Hand the cover back to the AI. */
+  releaseCover() {
+    return this.#serial(() => this.#commitPhotos('대표 사진: AI에게 맡김', (data) => releaseCover(data)));
   }
 
   /** Take a photo out: its entry, its two site copies and a redraft still waiting for it go in one commit. */
@@ -387,6 +396,7 @@ function makeRow(v, file) {
   const save = button('저장', 'btn btn-main');
   const redraft = button('AI로 다시 쓰기', 'btn');
   const cover = button('대표로 지정', 'btn');
+  const release = button('AI에게 맡기기', 'btn');
   const remove = button('삭제', 'btn btn-delete');
   const coverNote = el('p', 'cover-note', COVER_NOTE);
   const msg = el('p', 'msg');
@@ -395,11 +405,11 @@ function makeRow(v, file) {
   msg.tabIndex = -1;
   const tags = el('p', 'tags');
 
-  const group = el('div', 'row', figure, el('div', 'row-body', tags, fields, el('div', 'row-actions', save, redraft, cover, remove, coverNote), msg));
+  const group = el('div', 'row', figure, el('div', 'row-body', tags, fields, el('div', 'row-actions', save, redraft, cover, release, remove, coverNote), msg));
   group.setAttribute('role', 'group');
   // the text controls by photo key, in TEXTS order
   const row = { file, node: el('li', '', group), group, img, tags, room, texts: { title, alt, title_en: titleEn, alt_en: altEn }, marks, save, redraft,
-    cover, remove, coverNote, msg, optionsKey: '', shown: null, photo: null, busy: false };
+    cover, release, remove, coverNote, msg, optionsKey: '', shown: null, photo: null, busy: false };
   v.rows.set(file, row);
 
   const on = (b, action) => b.addEventListener('click', () => {
@@ -407,6 +417,7 @@ function makeRow(v, file) {
   });
   on(save, saveRow);
   on(cover, coverRow);
+  on(release, releaseRow);
   on(remove, deleteRow);
   on(redraft, redraftRow);
   return row;
@@ -422,6 +433,7 @@ function updateButtons(v, row) {
   off(row.save, row.busy || redrafting);
   off(row.redraft, row.busy || redrafting);
   off(row.cover, row.busy);
+  off(row.release, row.busy);
   off(row.remove, row.busy);
 }
 
@@ -436,7 +448,7 @@ function fillRow(v, row, photo, roomId, roomOptions, optionsKey) {
   if (row.img.alt !== photo.alt) row.img.alt = photo.alt;
 
   const tags = badges(photo);
-  if (isCover) tags.unshift(COVER_BADGE);
+  if (isCover) tags.unshift(COVER_BADGE, coverBadge(v.store.data)); // who picked it, dim after the strong 대표 사진
   row.tags.replaceChildren(...tags.flatMap((text, i) => {
     const node = STRONG.has(text) ? el('span', 'tag-strong', text) : text;
     return i === 0 ? [node] : [' · ', node];
@@ -466,6 +478,7 @@ function fillRow(v, row, photo, roomId, roomOptions, optionsKey) {
   row.shown = shown;
 
   row.cover.hidden = isCover;
+  row.release.hidden = !(isCover && v.store.data.cover_pick?.by === 'person');
   row.remove.hidden = isCover;
   row.coverNote.hidden = !isCover;
   updateButtons(v, row);
@@ -529,6 +542,17 @@ async function coverRow(v, row) {
   });
   if (!done.ok) return;
   say(row.msg, '대표 사진으로 지정했어요');
+  if (done.value) v.ctx.refreshStatus(true);
+}
+
+async function releaseRow(v, row) {
+  const done = await act(v, row, '바꾸는 중…', async () => {
+    const sha = await v.store.releaseCover();
+    draw(v);
+    return sha;
+  });
+  if (!done.ok) return;
+  say(row.msg, RELEASED);
   if (done.value) v.ctx.refreshStatus(true);
 }
 

@@ -104,9 +104,28 @@ export function deletePhoto(data, name) {
   return photo;
 }
 
+/**
+ * Make a photo the cover, picked by a person: the AI leaves it (cover_pick says so) and only sets where to crop it on
+ * its next run, so the old cover's focus goes.
+ */
 export function setCover(data, name) {
   findPhoto(data, name);
   data.cover = name;
+  data.cover_pick = { by: 'person' };
+  delete data.cover_focus;
+}
+
+/** Hand the cover back to the AI: on its next run it picks again. The cover and its focus stay until then. */
+export function releaseCover(data) {
+  delete data.cover_pick;
+}
+
+/** Who picked the cover, as the badge after 대표 사진 puts it. */
+export function coverBadge(data) {
+  const by = isObject(data.cover_pick) ? data.cover_pick.by : undefined;
+  if (by === 'person') return '직접 고름';
+  if (by === 'ai') return 'AI가 고름';
+  return 'AI가 고를 차례';
 }
 
 /** Set a text. A key the photo already has changes in place; a new English key goes where photos.json keeps it. */

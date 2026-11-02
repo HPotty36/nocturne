@@ -6,7 +6,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  SMALL_MODEL, CONFIDENT, GalleryError, serialize, allNames, addPhoto, deletePhoto, setCover, saveEdits, badges, COVER_BADGE, REVIEW_BADGE,
+  SMALL_MODEL, CONFIDENT, GalleryError, serialize, allNames, addPhoto, deletePhoto, setCover, releaseCover, coverBadge, saveEdits, badges,
+  COVER_BADGE, REVIEW_BADGE,
 } from '../../admin/lib/gallery.js';
 
 const ROOT = new URL('../../', import.meta.url); // repo root, whatever the working directory
@@ -162,6 +163,34 @@ test('deletePhoto removes the photo from its room and returns the entry', () => 
   assert.deepEqual(d.rooms[0].photos.map((p) => p.file), ['a1']);
   assert.equal(gone.title, '다리 아래');
   assert.equal(d.cover, 'a1');
+});
+
+test('setCover pins the cover for a person and drops its focus (the AI sets it for that photo next)', () => {
+  const d = site();
+  setCover(d, 'n1');
+  assert.equal(d.cover, 'n1');
+  assert.deepEqual(d.cover_pick, { by: 'person' });
+  assert.equal('cover_focus' in d, false);
+  assert.ok(serialize(d).includes('  "cover": "n1",\n  "cover_pick": {"by":"person"},\n  "rooms": ['));
+});
+
+test('releaseCover hands the cover back to the AI: only cover_pick goes', () => {
+  const d = site();
+  setCover(d, 'n1');
+  releaseCover(d);
+  assert.equal(d.cover, 'n1');
+  assert.equal('cover_pick' in d, false);
+  const e = site();
+  releaseCover(e);
+  assert.deepEqual(e.cover_focus, [0.42, 0.5]);
+  assert.equal('cover_pick' in e, false);
+});
+
+test('coverBadge says who picked the cover', () => {
+  assert.equal(coverBadge({ cover_pick: { by: 'ai', model: 'm', seen: 'x' } }), 'AI가 고름');
+  assert.equal(coverBadge({ cover_pick: { by: 'person' } }), '직접 고름');
+  assert.equal(coverBadge({}), 'AI가 고를 차례');
+  assert.equal(coverBadge({ cover_pick: 'odd' }), 'AI가 고를 차례');
 });
 
 test('deletePhoto and setCover errors', () => {
