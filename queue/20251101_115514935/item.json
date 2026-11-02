@@ -6,8 +6,8 @@
   "date": "2025.11.01",
   "camera": "A142",
   "grayscale": false,
-  "status": "waiting",
-  "claimed_at": null,
-  "by": null,
+  "status": "github",
+  "claimed_at": "2026-11-02T13:31:38Z",
+  "by": "github",
   "error": null
 }
