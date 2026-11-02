@@ -1,7 +1,7 @@
 // The "전시 중" tab: every exhibited photo by room, with its badges, room, title and description (Korean, and the
 // optional English ones), and five actions:
 // 저장, 대표로 지정, 삭제 (after a confirm dialog), AI로 다시 쓰기 (a redraft item in the queue) and, on a cover a
-// person picked, AI에게 맡기기 (the AI picks the cover again on its next run).
+// person picked or one the AI failed to pick, AI에게 맡기기 (the AI picks the cover again on its next run).
 //
 // ExhibitStore (DOM-free, tested in Node) holds photos.json as the page knows it. Each change is one commit whose
 // build re-reads src/photos.json at the commit it builds on and applies the change with gallery.js, and 저장 sends
@@ -13,7 +13,7 @@
 
 import { AuthError, GitHubError } from '../lib/github.js';
 import {
-  badges, COVER_BADGE, coverBadge, deletePhoto, GalleryError, releaseCover, REVIEW_BADGE, saveEdits, serialize, setCover,
+  badges, COVER_BADGE, coverBadge, coverCanRelease, deletePhoto, GalleryError, releaseCover, REVIEW_BADGE, saveEdits, serialize, setCover,
 } from '../lib/gallery.js';
 import { newItem } from '../lib/queue.js';
 
@@ -478,7 +478,7 @@ function fillRow(v, row, photo, roomId, roomOptions, optionsKey) {
   row.shown = shown;
 
   row.cover.hidden = isCover;
-  row.release.hidden = !(isCover && v.store.data.cover_pick?.by === 'person');
+  row.release.hidden = !(isCover && coverCanRelease(v.store.data));
   row.remove.hidden = isCover;
   row.coverNote.hidden = !isCover;
   updateButtons(v, row);

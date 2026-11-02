@@ -120,12 +120,22 @@ export function releaseCover(data) {
   delete data.cover_pick;
 }
 
-/** Who picked the cover, as the badge after 대표 사진 puts it. */
+/**
+ * Who picked the cover, as the badge after 대표 사진 puts it. 'AI가 못 고름': the AI's last try failed in a way it is not
+ * asked again for the same photos (cover_pick.tried), until they change or the cover is handed back.
+ */
 export function coverBadge(data) {
-  const by = isObject(data.cover_pick) ? data.cover_pick.by : undefined;
-  if (by === 'person') return '직접 고름';
-  if (by === 'ai') return 'AI가 고름';
+  const pick = isObject(data.cover_pick) ? data.cover_pick : {};
+  if (pick.by === 'person') return '직접 고름';
+  if (pick.tried) return 'AI가 못 고름';
+  if (pick.by === 'ai') return 'AI가 고름';
   return 'AI가 고를 차례';
+}
+
+/** Whether AI에게 맡기기 applies: the cover is pinned by a person, or the AI's last try failed. */
+export function coverCanRelease(data) {
+  const pick = isObject(data.cover_pick) ? data.cover_pick : {};
+  return pick.by === 'person' || Boolean(pick.tried);
 }
 
 /** Set a text. A key the photo already has changes in place; a new English key goes where photos.json keeps it. */

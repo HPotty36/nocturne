@@ -15,7 +15,10 @@ cover meanwhile wins). When GITHUB_OUTPUT is set it gets changed=1 if the cover 
 rebuilds the site), else changed=0.
 
 Without ANTHROPIC_API_KEY it says so and does nothing. When Claude cannot answer, a ::warning line names why and the
-cover stays; the next run tries again. Exit 1 only for another error (GitHub, a bug), with its traceback.
+cover stays. A failure Anthropic bills for and that asking again would most likely repeat (paid: a refusal, a cut-off
+or unreadable answer) records the fingerprint it tried in cover_pick.tried, so the same photos are not asked about
+again until they change or a person presses AI에게 맡기기 on the admin page; any other failure is tried again on the
+next run. Exit 1 only for another error (GitHub, a bug), with its traceback.
 """
 import io
 import os
@@ -34,15 +37,25 @@ EDGE = 512  # long edge of the copies Claude sees
 QUALITY = 80
 NO_KEY = "Claude API 키가 없어서 대표 사진을 고르지 않아요"
 WARNING = "대표 사진"  # the title of the ::warning line on the run's page
+NOT_PICKED = "대표 사진: Claude가 못 고름"  # the commit that records a paid failure
+
+
+def paid(message):
+    """Is `message` (a CuratorError's) a failure Anthropic bills for and that asking again would most likely repeat?
+    Missing keys, used-up credit, rate limits, dropped connections and server errors are not: nothing was answered."""
+    return message in (curator.CLAUDE_COVER_REFUSED, curator.CLAUDE_CUT_OFF) or message.startswith(curator.CLAUDE_UNREADABLE)
 
 
 def plan(data):
     """"pick", "focus" or None: what the cover needs, judged from photos.json (see the module docstring). A person's
-    pin on a photo that is no longer on show counts for nothing."""
+    pin on a photo that is no longer on show counts for nothing; photos already tried (cover_pick.tried) are not
+    asked about again."""
     on_show = photolib.listed(data)
     if not on_show:
         return None
     pick, cover = data.get("cover_pick"), data.get("cover")
+    if isinstance(pick, dict) and pick.get("tried") == photolib.fingerprint(data):
+        return None
     by = pick.get("by") if isinstance(pick, dict) else None
     if cover not in on_show:
         return "pick"
@@ -87,8 +100,13 @@ def run(gh, picker=None, model=None):
     shown = [photolib.find_photo(data, data["cover"])] if todo == "focus" else candidates(data)
     pictures = [{"file": photo["file"], "title": photo["title"], "room": room["name"],
                  "image": small_copy(gh.get_bytes(REPO, f"photos/thumb/{photo['file']}.jpg"))} for room, photo in shown]
-    answer = picker(pictures, data.get("cover"), focus_only=todo == "focus", model=model)
     seen = photolib.fingerprint(data)  # what Claude was shown: a photo that lands meanwhile is picked up next time
+    try:
+        answer = picker(pictures, data.get("cover"), focus_only=todo == "focus", model=model)
+    except curator.CuratorError as err:
+        if paid(str(err)):
+            _record_tried(gh, todo, seen)
+        raise
     changed = []
 
     def build(read_json):
@@ -109,6 +127,20 @@ def run(gh, picker=None, model=None):
     if gh.commit_files(REPO, message, build) is None:
         return {"result": "skipped", "changed": False, "file": answer["file"]}
     return {"result": "picked" if todo == "pick" else "focused", "changed": changed[0], "file": answer["file"]}
+
+
+def _record_tried(gh, todo, seen):
+    """Note in cover_pick that the photos with fingerprint `seen` were tried and failed, while photos.json still calls for
+    `todo` (the other keys of cover_pick stay)."""
+    def build(read_json):
+        fresh = read_json(DATA)
+        if fresh is None or plan(fresh) != todo:
+            return {}
+        pick = fresh.get("cover_pick")
+        fresh["cover_pick"] = {**(pick if isinstance(pick, dict) else {}), "tried": seen}
+        return {DATA: photolib.dumps_data(fresh)}
+
+    gh.commit_files(REPO, NOT_PICKED, build)
 
 
 def main(argv=None):

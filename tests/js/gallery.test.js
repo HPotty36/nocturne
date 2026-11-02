@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  SMALL_MODEL, CONFIDENT, GalleryError, serialize, allNames, addPhoto, deletePhoto, setCover, releaseCover, coverBadge, saveEdits, badges,
+  SMALL_MODEL, CONFIDENT, GalleryError, serialize, allNames, addPhoto, deletePhoto, setCover, releaseCover, coverBadge, coverCanRelease, saveEdits, badges,
   COVER_BADGE, REVIEW_BADGE,
 } from '../../admin/lib/gallery.js';
 
@@ -191,6 +191,16 @@ test('coverBadge says who picked the cover', () => {
   assert.equal(coverBadge({ cover_pick: { by: 'person' } }), '직접 고름');
   assert.equal(coverBadge({}), 'AI가 고를 차례');
   assert.equal(coverBadge({ cover_pick: 'odd' }), 'AI가 고를 차례');
+  assert.equal(coverBadge({ cover_pick: { tried: 'x' } }), 'AI가 못 고름'); // a paid failure: asked again once handed back
+  assert.equal(coverBadge({ cover_pick: { by: 'ai', model: 'm', seen: 'y', tried: 'x' } }), 'AI가 못 고름');
+  assert.equal(coverBadge({ cover_pick: { by: 'person', tried: 'x' } }), '직접 고름');
+});
+
+test('coverCanRelease: a cover a person picked, or one the AI failed to pick, can be handed (back) to the AI', () => {
+  assert.equal(coverCanRelease({ cover_pick: { by: 'person' } }), true);
+  assert.equal(coverCanRelease({ cover_pick: { tried: 'x' } }), true);
+  assert.equal(coverCanRelease({ cover_pick: { by: 'ai', model: 'm', seen: 'y' } }), false);
+  assert.equal(coverCanRelease({}), false);
 });
 
 test('deletePhoto and setCover errors', () => {

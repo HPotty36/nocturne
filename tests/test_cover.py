@@ -57,6 +57,14 @@ class PlanTests(unittest.TestCase):
         self.assertIsNone(cover.plan(with_pick(SITE, cover_pick={"by": "person"})))
         self.assertEqual(cover.plan(with_pick(SITE, cover_pick="odd")), "pick")
 
+    def test_plan_skips_a_set_already_tried(self):
+        # a failure Anthropic bills for (a refusal, a cut-off or unreadable answer) is not asked again for the same photos
+        fresh = photolib.fingerprint(SITE)
+        self.assertIsNone(cover.plan(with_pick(SITE, cover_pick={"tried": fresh})))
+        self.assertEqual(cover.plan(with_pick(SITE, cover_pick={"tried": "00000000"})), "pick")  # the photos changed since
+        self.assertIsNone(cover.plan(with_pick(SITE, cover_pick={"by": "ai", "model": "m", "seen": "00000000", "tried": fresh})))
+        self.assertIsNone(cover.plan(with_pick(SITE, cover_pick={"by": "person", "tried": fresh}, cover_focus=None)))
+
     def test_plan_picks_when_the_cover_is_gone(self):
         self.assertEqual(cover.plan(with_pick(SITE, cover="gone")), "pick")
         self.assertEqual(cover.plan(with_pick(SITE, cover=None)), "pick")
@@ -156,6 +164,41 @@ class RunTests(RepoCase):
         picker = FakePicker({"file": "n1", "focus": [0.2, 0.7], "model": "m"}, during=lambda: self.put(gone))
         self.assertEqual(cover.run(self.gh, picker)["result"], "skipped")
         self.assertEqual(self.photos(), gone)
+
+
+class FailureTests(RepoCase):
+    def test_a_paid_failure_is_not_paid_for_again(self):
+        picker = FakePicker(fail=curator.CLAUDE_COVER_REFUSED)
+        with self.assertRaises(curator.CuratorError):
+            cover.run(self.gh, picker)
+        self.assertEqual(self.photos()["cover_pick"], {"tried": photolib.fingerprint(SITE)})
+        self.assertEqual(self.message(), "대표 사진: Claude가 못 고름")
+        self.assertEqual(cover.run(self.gh, picker), {"result": None, "changed": False, "file": None})
+        self.assertEqual(len(picker.calls), 1)
+
+    def test_paid_failures(self):
+        for message in (curator.CLAUDE_CUT_OFF, curator.CLAUDE_UNREADABLE + "모르는 사진이에요)"):
+            self.assertTrue(cover.paid(message), message)
+        for message in ("Claude API 요청이 너무 많아요", "Claude API에 연결하지 못했어요", "Claude API 키가 맞지 않아요",
+                        "Claude API 권한이나 크레딧을 확인해 주세요", "Claude API 오류 500", "anthropic 패키지가 없어요"):
+            self.assertFalse(cover.paid(message), message)
+
+    def test_a_free_failure_is_tried_again(self):
+        picker = FakePicker(fail="Claude API 요청이 너무 많아요")
+        before = self.fake.commits(R)
+        for _ in range(2):
+            with self.assertRaises(curator.CuratorError):
+                cover.run(self.gh, picker)
+        self.assertEqual((len(picker.calls), self.fake.commits(R)), (2, before))
+        self.assertNotIn("cover_pick", self.photos())
+
+    def test_a_paid_focus_failure_keeps_the_pin(self):
+        self.put(with_pick(SITE, cover="a2", cover_pick={"by": "person"}, cover_focus=None))
+        with self.assertRaises(curator.CuratorError):
+            cover.run(self.gh, FakePicker(fail=curator.CLAUDE_CUT_OFF))
+        data = self.photos()
+        self.assertEqual((data["cover"], data["cover_pick"]), ("a2", {"by": "person", "tried": photolib.fingerprint(SITE)}))
+        self.assertNotIn("cover_focus", data)
 
 
 class MainTests(RepoCase):

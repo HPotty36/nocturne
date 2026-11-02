@@ -24,7 +24,8 @@ jobs:
       cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    # 쓰기 권한이 있는 토큰은 worker 단계에, Anthropic 키는 Claude 단계에만 준다 (내려받은 Ollama가 도는 단계에는 둘 다 없다).
+    # 쓰기 권한이 있는 토큰은 worker 단계와 대표 사진 단계에, Anthropic 키는 Claude 단계와 대표 사진 단계에만 준다
+    # (내려받은 Ollama가 도는 단계에는 둘 다 없다).
     # 여기에는 비밀이 아닌 모델 이름만 둔다. Claude 모델을 바꾸려면 아래 값만 고친다
     env:
       NOCTURNE_MODEL: gemma4:e4b-it-qat
