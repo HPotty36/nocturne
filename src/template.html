@@ -147,7 +147,11 @@ h2 { font: inherit; }
 }
 .room-head h2 { font-size: 28px; font-weight: 300; line-height: 1; }
 .room-meta { display: flex; gap: 10px; font-size: 12px; color: var(--ink-dim); }
-.room-count { text-combine-upright: digits 2; }  /* the count's digits stand upright; the span lies on its side */
+/* the count's number stands upright; the span lies on its side. The `digits` form of text-combine-upright would say
+   this on .room-count alone, but no browser takes it, so the number has its own span: two digits share one
+   character's space, three or more stack */
+.room-n { text-combine-upright: all; }
+.room-n.is-long { text-combine-upright: none; text-orientation: upright; }
 
 /* justified hang: JS sets each print's width and its photo's height (then adds .is-laid);
    without JS every photo stands at a fixed height in its own ratio */

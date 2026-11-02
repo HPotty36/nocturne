@@ -104,6 +104,13 @@ def room_span(photos):
     return months[0] if months[0] == months[-1] else f"{months[0]} – {months[-1]}"
 
 
+def count_html(lang, n):
+    """The room head's count, "7점" / "7", with the number in its own span so it can stand upright in the vertical head:
+    up to two digits side by side in one character's space, more digits (a room of 100 or more) stacked."""
+    number = f'<span class="room-n{" is-long" if n >= 100 else ""}">{n}</span>'
+    return esc(STRINGS[lang]["count"]).replace("{n}", number)
+
+
 def total_text(lang, n):
     """"사진 3점" / "3 photographs" ("1 photograph")."""
     if lang == "en":
@@ -194,12 +201,11 @@ def title_font_href(data):
 
 def room_html(room, facts, lang, base, first):
     """One room: its head (the name, then count and span) and the hang of its prints. Only the first room loads eagerly."""
-    count = STRINGS[lang]["count"].format(n=len(room["photos"]))
     span = room_span(room["photos"])
     span_html = f'<span class="room-span">{esc(span)}</span>' if span else ""
     prints = "".join(f"\n  {print_html(p, facts[p['file']], lang, base, not first)}" for p in room["photos"])
     return (f'<section class="room" id="{esc(room["id"])}"><header class="room-head"><h2>{esc(room_name(room, lang))}</h2>'
-            f'<p class="room-meta"><span class="room-count">{esc(count)}</span>{span_html}</p></header>'
+            f'<p class="room-meta"><span class="room-count">{count_html(lang, len(room["photos"]))}</span>{span_html}</p></header>'
             f'<div class="hang">{prints}\n</div></section>')
 
 
