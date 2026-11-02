@@ -190,6 +190,12 @@ class BuildTests(unittest.TestCase):
             self.assertIn(s, css)
         self.assertRegex(css, r"\.cover-btn img \{[^}]*object-fit: cover;[^}]*object-position: var\(--fx, 50%\) var\(--fy, 50%\);")
 
+    def test_phone_cover_never_taller_than_the_first_screen(self):
+        # 4:5 of the full width would be several screens tall on a phone held sideways or a narrow desktop window
+        self.assertRegex(self.css(), r"\.cover-btn \{[^}]*aspect-ratio: 4 / 5;[^}]*max-height: calc\(100svh - var\(--bar\) - "
+                                     r"env\(safe-area-inset-top, 0px\) - var\(--lead\) - 28px\);")
+        self.assertRegex(self.css(), r"@media \(min-width: 960px\) \{[^@]*\.cover-btn \{[^}]*max-height: none;")
+
     def test_phone_rows_lower_target(self):
         # the name column takes room from a phone's hang: a lower target keeps two prints a row
         self.assertIn("return w < 400 ? 150 : 180;", self.html())

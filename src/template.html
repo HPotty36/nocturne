@@ -112,6 +112,7 @@ h2 { font: inherit; }
   display: block;
   width: 100%;
   aspect-ratio: 4 / 5;
+  max-height: calc(100svh - var(--bar) - env(safe-area-inset-top, 0px) - var(--lead) - 28px);  /* sideways, or a low window: no taller than the first screen */
   padding: 0;
   border: 0;
   cursor: zoom-in;
@@ -234,7 +235,7 @@ h2 { font: inherit; }
   .foot { display: none; }
   .cover { margin-inline: 0; }
   .cover .label { padding-inline: 0; }
-  .cover-btn { aspect-ratio: auto; height: calc(100svh - 2 * var(--edge) - 28px); }  /* the label's line stays on the first screen */
+  .cover-btn { aspect-ratio: auto; max-height: none; height: calc(100svh - 2 * var(--edge) - 28px); }  /* the label's line stays on the first screen */
   .room { column-gap: clamp(20px, 2.4vw, 36px); }
   .room-head, .room-meta { gap: 14px; }
   .room-head h2 { font-size: clamp(40px, 4vw, 60px); }
