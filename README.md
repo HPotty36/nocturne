@@ -34,7 +34,7 @@ GitHub Pages. The repository holds everything; there is no database.
 - **A cover Claude picks**: the photo at the top fills the first screen. When the photos on show change, Claude picks the cover again and says where to crop it; a cover picked by hand stays.
 - **Korean and English**: a toggle switches pages and is remembered.
 - **Installable, works offline**: install it on a phone; after it has been opened online once it works offline.
-- **Share to upload**: the admin page installs as its own app, and on Android you can share photos from the gallery app to "Nocturne 관리". Nothing goes up until you tap 올리기 (upload).
+- **Share to upload**: on Android, share photos from the gallery app to the installed "Nocturne" app. They wait on the admin page, and nothing goes up until you tap 올리기 (upload).
 - **Upload and walk away**: pick a photo on any phone or PC. The AI picks the room, writes the title and alt text in Korean and English, and publishes at once. Fix it later if you like, in either language.
 - **Claude first, Ollama as backup**: GitHub Actions drafts with Claude Opus 5.5 on the Claude API, paid from the API credits of a Claude subscription. If Claude can't, gemma4 e4b on Ollama takes over in the same run; if Actions can't run at all, a home PC (gemma4 12B) picks the photo up after 5 minutes. The 12B quietly rewrites e4b's text later.
 - **People win**: the AI never changes a title, description or room that a person has edited.
@@ -82,7 +82,7 @@ sequenceDiagram
 | Part | What it uses |
 |:---|:---|
 | Frontend | Plain HTML, CSS and JavaScript, with one serif font from Google Fonts. The admin page is vanilla ES modules: no framework, no bundler, strict CSP |
-| Offline | A web manifest and a service worker (`sw.js`) cache the pages, the thumbnails and the cover, so the exhibition opens offline after one online visit. The admin page has its own manifest and a tiny service worker that only receives shared photos; it is never cached |
+| Offline | A web manifest and a service worker (`sw.js`) cache the pages, the thumbnails and the cover, so the exhibition opens offline after one online visit. The same worker receives photos shared to the app; the admin page itself is never cached |
 | Scripts | Python 3 + Pillow (+ the `anthropic` SDK on Actions): site build (writes `index.html`, `en/index.html`, the manifest and `sw.js`), photo prep, AI worker, home PC helper |
 | AI | Claude API with Claude Opus 5.5 (GitHub Actions); Ollama as the fallback, with gemma4 e4b (GitHub Actions) and gemma4 12B (home PC) |
 | Hosting | GitHub Pages, deployed by GitHub Actions |
@@ -110,7 +110,7 @@ src/          page template, service worker template, and photos.json (rooms, ti
 icons/        app icons for installing the site
 photos/       published copies: thumb/ (1000 px) and full/ (2400 px)
 queue/        uploads waiting for the AI (only while something waits)
-admin/        admin page: upload (or share), review, fix; its own manifest, icons and service worker (static ES modules)
+admin/        admin page: upload (or share), review, fix (static ES modules)
 auth/         Cloudflare Worker for the login code exchange
 scripts/      build, photo prep, AI curator, queue worker, home PC helper
 .github/      workflows: site.yml (Pages), draft.yml (AI on Actions); README images

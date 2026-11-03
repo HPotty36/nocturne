@@ -1,9 +1,7 @@
-import json
 import re
 import unittest
 from urllib.parse import urlsplit
 
-from PIL import Image
 
 import helpers
 
@@ -95,47 +93,24 @@ class AdminStaticTests(unittest.TestCase):
         for s in self.LABELS:
             self.assertIn(s, t)
 
-    # --- installing the admin page, and sharing photos to it ---
-    MANIFEST = {
-        "id": "/nocturne/admin/", "name": "Nocturne 관리", "short_name": "Nocturne 관리", "lang": "ko", "start_url": "./", "scope": "./",
-        "display": "standalone", "background_color": "#000", "theme_color": "#000",
-        "icons": [{"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
-                  {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
-                  {"src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}],
-        "share_target": {"action": "share", "method": "POST", "enctype": "multipart/form-data",
-                         "params": {"files": [{"name": "photos", "accept": ["image/jpeg", "image/png"]}]}},
-    }
-    def test_manifest(self):
-        text = (helpers.ROOT / "admin" / "manifest.webmanifest").read_text(encoding="utf-8")
-        self.assertEqual(json.loads(text), self.MANIFEST)
-        self.assertTrue(text.endswith("}\n"))
-        for icon in self.MANIFEST["icons"]:
-            self.assertTrue((helpers.ROOT / "admin" / icon["src"]).is_file(), icon["src"])
-    def test_app_ids_differ_from_the_sites(self):
-        # "id" is resolved against the origin of the start URL, so "./" would be the same identity for the site and
-        # the admin page (both https://hpotty36.github.io/); each takes its own absolute path instead
-        import build
-        admin = json.loads((helpers.ROOT / "admin" / "manifest.webmanifest").read_text(encoding="utf-8"))["id"]
-        self.assertEqual((build.MANIFEST["id"], admin), ("/nocturne/", "/nocturne/admin/"))
+    # --- one installed app: the site's; the admin page has no manifest, icons or worker of its own ---
     def test_head_links(self):
+        # the site's manifest and icons: installing from the admin page installs the site app, the one app of this
+        # origin (two apps on one origin clash on Android)
         t = (helpers.ROOT / "admin" / "index.html").read_text(encoding="utf-8")
-        for tag in ('<link rel="manifest" href="manifest.webmanifest">', '<link rel="icon" href="icons/icon-192.png">',
-                    '<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">', '<meta name="theme-color" content="#000">'):
+        for tag in ('<link rel="manifest" href="../manifest.webmanifest">', '<link rel="icon" href="../icons/icon-192.png">',
+                    '<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">', '<meta name="theme-color" content="#000">'):
             self.assertEqual(t.count(tag), 1, tag)
         self.assertLess(t.index('<link rel="manifest"'), t.index('<script'))
-    def test_icons(self):
-        for name, size in (("icon-192", 192), ("icon-512", 512), ("icon-maskable-512", 512), ("apple-touch-icon", 180)):
-            with Image.open(helpers.ROOT / "admin" / "icons" / f"{name}.png") as icon:
-                self.assertEqual(icon.size, (size, size), name)
-                self.assertIn(icon.mode, ("RGB", "RGBA"), name)
-                corner = icon.convert("RGB").getpixel((0, 0))  # the cream ground (the site's icons are the other way round)
-                for got, want in zip(corner, (235, 233, 228)):
-                    self.assertLessEqual(abs(got - want), 2, f"{name} {corner}")
-    def test_worker_is_a_plain_file_that_only_takes_the_share(self):
+        for gone in ("manifest.webmanifest", "icons"):
+            self.assertFalse((helpers.ROOT / "admin" / gone).exists(), gone)
+    def test_no_worker_of_its_own(self):
+        # the page registers none; admin/sw.js only retires the one older devices still have
+        app = (helpers.ROOT / "admin" / "app.js").read_text(encoding="utf-8")
+        self.assertNotIn("serviceWorker", app)
         t = (helpers.ROOT / "admin" / "sw.js").read_text(encoding="utf-8")
-        self.assertNotRegex(t, r"(?m)^\s*(import|export)\b")  # a classic worker: no modules
-        self.assertIn("nocturne-share", t)
-
+        self.assertIn("self.registration.unregister()", t)
+        self.assertNotIn("fetch", t)
 
 if __name__ == "__main__":
     unittest.main()

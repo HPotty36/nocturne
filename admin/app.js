@@ -6,7 +6,7 @@
 // written to storage, never logged, never put in a URL. Storage holds only the login on its way to GitHub and back
 // (sessionStorage) and two flags: this browser has logged in before (localStorage), and this tab already went to
 // GitHub on its own once (sessionStorage), so a failed login shows the button instead of going round again.
-// Photos shared to this page from a phone's share sheet wait in the cache nocturne-share (admin/sw.js puts them there,
+// Photos shared to the app from a phone's share sheet wait in the cache nocturne-share (the site's worker puts them there,
 // lib/shared.js reads them). The login screen says how many wait; after the login the "새 사진" tab opens and offers
 // them (올리기 / 버리기). Nothing is uploaded or discarded without the person saying so.
 // Views get ctx = {gh, config, refreshStatus, reloadExhibit}:
@@ -309,11 +309,6 @@ forget(local, OLD_TOKEN_KEY); // the sealed token of the old paste-a-token login
 // "Nocturne" opens the site in a new tab, so this page stays open and logged in. In an installed app a new tab would
 // leave the app (an iPad opens Safari), so there it goes to the site in place; "관리" there logs in again by itself.
 if (installedApp(window)) document.querySelector('.brand .mark')?.removeAttribute('target');
-
-// The worker that receives photos from the share sheet (admin/sw.js; scope admin/). Without it the page works the same.
-if ('serviceWorker' in navigator && /^https?:$/.test(window.location.protocol)) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
-}
 
 const got = readReturn(window.location);
 const action = bootAction({

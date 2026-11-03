@@ -9,10 +9,10 @@
 
    Caches: nocturne-page (both pages, the manifest, the icons), nocturne-thumbs (every thumbnail on show),
    nocturne-full (the cover, then full-size copies once viewed), nocturne-fonts (the Google Fonts stylesheet and
-   font files). nocturne-share belongs to the admin page's worker (admin/sw.js: photos shared to it wait there for the
-   person to upload them); it is kept, never read or cleaned here.
-   admin/ is never answered here: the admin page, its GitHub login return and its API calls go to the network
-   exactly as if there were no service worker. */
+   font files), nocturne-share (photos shared to the installed app from a phone's share sheet, see receive; they wait
+   there, one entry each, until the admin page uploads or drops them: admin/lib/shared.js; never cleaned here).
+   Apart from that share (a POST to admin/share), admin/ is never answered here: the admin page, its GitHub login
+   return and its API calls go to the network exactly as if there were no service worker. */
 
 const VERSION = '__VERSION__';
 const PHOTOS = [/*__PHOTOS__*/];
@@ -22,7 +22,8 @@ const PAGE = 'nocturne-page';
 const THUMBS = 'nocturne-thumbs';
 const FULL = 'nocturne-full';
 const FONTS = 'nocturne-fonts';
-const SHARE = 'nocturne-share';  // the admin page's (admin/sw.js); only named so that activate does not delete it
+const SHARE = 'nocturne-share';  // photos shared to the app, waiting for the admin page
+const ACCEPT = ['image/jpeg', 'image/png'];  // what the manifest's share_target asks for, and what the photo picker takes
 const TIMEOUT = 4000;  // ms a page waits for the network before the copy on the device is shown
 const SHELL = ['manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png',
                'icons/apple-touch-icon.png'];
@@ -84,6 +85,30 @@ if (typeof ServiceWorkerGlobalScope !== 'undefined') {
 
   // undefined when there is no copy, or the cache cannot be read (then the network answers as usual)
   const cached = (name, key) => caches.open(name).then((cache) => cache.match(key, { ignoreVary: true })).catch(quiet);
+
+  /* A share from the phone's share sheet (the manifest's share_target: a POST to admin/share). The usable photos are
+     kept for the admin page, one entry each: key admin/share/<ms>-<number>, the photo as the body, Content-Type and
+     X-Name (the file name through encodeURIComponent) as headers. Then on to the admin page with a 303, so the page
+     is read with a GET, never with the POST again. A cache that cannot be written (no space) or a form that cannot
+     be read only means fewer photos there: the person is never left on an error page. */
+  const receive = async (request) => {
+    try {
+      const form = await request.formData();
+      const photos = form.getAll('photos').filter((f) => typeof f !== 'string' && f.size > 0 && ACCEPT.includes(f.type));
+      if (photos.length > 0) {
+        const cache = await caches.open(SHARE);
+        const now = Date.now();
+        for (let i = 0; i < photos.length; i++) {
+          await cache.put(at(`admin/share/${now}-${i}`), new Response(photos[i], {
+            headers: { 'Content-Type': photos[i].type, 'X-Name': encodeURIComponent(photos[i].name) },
+          }));
+        }
+      }
+    } catch (e) {
+      // nothing kept: the redirect below is the same
+    }
+    return Response.redirect(at('admin/'), 303);
+  };
 
   self.addEventListener('install', (event) => {
     event.waitUntil((async () => {
@@ -149,6 +174,10 @@ if (typeof ServiceWorkerGlobalScope !== 'undefined') {
 
   self.addEventListener('fetch', (event) => {
     const request = event.request;
+    if (request.method === 'POST' && new URL(request.url).pathname === new URL(at('admin/share')).pathname) {
+      event.respondWith(receive(request));
+      return;
+    }
     if (request.method !== 'GET') return;
     const kind = route(request.url, scope, request.mode);
     if (kind === 'pass') return;  // no respondWith: the browser fetches it as usual

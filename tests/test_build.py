@@ -243,7 +243,7 @@ class BuildTests(unittest.TestCase):
         self.addCleanup(shutil.rmtree, out.parent, ignore_errors=True)
         build.build(self.root, out)
         for p in ("index.html", "en/index.html", "photos/thumb/a1.jpg", "photos/full/n1.jpg", "admin/index.html",
-                  "admin/manifest.webmanifest", "admin/sw.js", "admin/icons/icon-512.png",
+                  "admin/sw.js",
                   "icons/icon-512.png", "manifest.webmanifest", "sw.js"):
             self.assertTrue((out / p).exists(), p)
         for p in ("index.html", "sw.js", "manifest.webmanifest"):
@@ -277,7 +277,9 @@ class PwaTests(unittest.TestCase):
             "description": "사진 3점",
             "icons": [{"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
                       {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
-                      {"src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}]})
+                      {"src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}],
+            "share_target": {"action": "admin/share", "method": "POST", "enctype": "multipart/form-data",
+                             "params": {"files": [{"name": "photos", "accept": ["image/jpeg", "image/png"]}]}}})
         for icon in manifest["icons"]:
             self.assertTrue((self.out / icon["src"]).is_file(), icon["src"])
 

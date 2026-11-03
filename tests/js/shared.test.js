@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SHARE_CACHE, cacheStorage, dropShares, pendingShares } from '../../admin/lib/shared.js';
 
-// The photos the admin worker (admin/sw.js) keeps in the cache `nocturne-share`, as the page reads them back.
+// The photos the site's worker (src/sw.js) keeps in the cache `nocturne-share`, as the page reads them back.
 const BASE = 'https://x.test/nocturne/admin/';
 
 /** An in-memory `caches` with one cache; `entries` is {key: {type, name, rawName, body}} (neither name: no X-Name; rawName is sent as it is). */

@@ -28,13 +28,17 @@ ROOT = Path(__file__).resolve().parent.parent
 
 COPIED = ("photos", "admin", "icons")  # folders published next to index.html with --out
 
-# manifest.webmanifest: what a phone needs to install the site. The description is site.description with {total}.
+# manifest.webmanifest: what a phone needs to install the site, the one app of this origin (the admin page has no
+# manifest of its own: two apps on one origin clash on Android). Photos shared to it go to admin/share, where the
+# site's worker keeps them for the admin page. The description is site.description with {total}.
 MANIFEST = {
     "name": "Nocturne", "short_name": "Nocturne", "id": "/nocturne/", "start_url": "./", "scope": "./", "display": "standalone",
     "background_color": "#000000", "theme_color": "#000000", "lang": "ko", "description": "",
     "icons": [{"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
               {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
               {"src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}],
+    "share_target": {"action": "admin/share", "method": "POST", "enctype": "multipart/form-data",
+                     "params": {"files": [{"name": "photos", "accept": ["image/jpeg", "image/png"]}]}},
 }
 
 # The three places in src/sw.js the build fills in; each must be there exactly once.
