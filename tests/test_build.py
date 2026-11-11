@@ -269,6 +269,13 @@ class PwaTests(unittest.TestCase):
     def cover(self):
         return json.loads(re.search(r'const COVER = (".*?");', self.built("sw.js")).group(1))
 
+    def test_share_address_is_the_one_the_worker_takes(self):
+        # the manifest sends shared photos to the address the worker listens on and keeps them under
+        action = json.loads(self.built("manifest.webmanifest"))["share_target"]["action"]
+        worker = self.built("sw.js")
+        self.assertIn(f"=== at('{action}')", worker)
+        self.assertIn(f"at(`{action}/${{now}}-${{i}}`)", worker)
+
     def test_manifest(self):
         manifest = json.loads(self.built("manifest.webmanifest"))
         self.assertEqual(manifest, {

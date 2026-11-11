@@ -174,7 +174,8 @@ if (typeof ServiceWorkerGlobalScope !== 'undefined') {
 
   self.addEventListener('fetch', (event) => {
     const request = event.request;
-    if (request.method === 'POST' && new URL(request.url).pathname === new URL(at('admin/share')).pathname) {
+    const to = new URL(request.url);
+    if (request.method === 'POST' && to.origin + to.pathname === at('admin/share')) {  // this site's address only
       event.respondWith(receive(request));
       return;
     }

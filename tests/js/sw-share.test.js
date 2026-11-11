@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { dropShares, pendingShares } from '../../admin/lib/shared.js';
 
 // The site's worker (src/sw.js) takes the photos shared to the installed app (the manifest's share_target, a POST to
 // admin/share): run the way a service worker runs it, in node:vm with stand-ins for the worker scope and the
@@ -84,11 +85,30 @@ test('other requests are left alone: no respondWith', async () => {
     new Request(`${S}admin/other`, { method: 'POST', body: 'x' }),  // a POST somewhere else
     new Request(`${S}share`, { method: 'POST', body: 'x' }),        // not under admin/
     new Request('https://api.github.com/repos/x/y', { method: 'POST', body: '{}' }),
+    new Request('https://other.example/nocturne/admin/share', { method: 'POST', body: 'x' }),  // the same path elsewhere
   ]) {
     assert.equal(await w.fetchEvent(request), null, `${request.method} ${request.url}`);
   }
   assert.equal(w.entries.size, 0);
   assert.deepEqual(w.opened, []);  // no cache was even opened
+});
+
+test('what the worker keeps is what the admin page reads back and drops (admin/lib/shared.js)', async () => {
+  const w = boot();
+  await (await w.fetchEvent(sharePost([file('한 강.jpg', 'image/jpeg', 'one'), file('b.png', 'image/png', 'two')])));
+  const cachesLike = {
+    open: async () => ({
+      keys: async () => [...w.entries.keys()].map((url) => ({ url })),
+      match: async (key) => w.entries.get(key)?.clone(),
+      delete: async (key) => w.entries.delete(key),
+    }),
+  };
+  const waiting = await pendingShares(cachesLike);
+  assert.deepEqual(waiting.map((s) => [s.file.name, s.file.type]), [['한 강.jpg', 'image/jpeg'], ['b.png', 'image/png']]);
+  assert.deepEqual(await Promise.all(waiting.map((s) => s.file.text())), ['one', 'two']);
+  for (const s of waiting) assert.ok(Math.abs(s.file.lastModified - Date.now()) < 60000, 'received time read from the key');
+  await dropShares(cachesLike, [waiting[0].key]);
+  assert.deepEqual((await pendingShares(cachesLike)).map((s) => s.file.name), ['b.png']);
 });
 
 test('a cache that cannot be written still gets the 303', async () => {

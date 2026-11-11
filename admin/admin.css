@@ -124,7 +124,7 @@ input:hover, select:hover, textarea:hover { border-color: var(--ink-dim); }
 .gate { max-width: 420px; }
 .gate-title { margin-bottom: 8px; }
 .gate-note { margin: 0 0 28px; line-height: 1.7; color: var(--ink-dim); text-wrap: pretty; }
-/* shared photos waiting (admin/sw.js): a second note, close under the first */
+/* shared photos waiting (kept by the site's worker): a second note, close under the first */
 #login-shared { margin-top: -14px; }
 .gate .btn-main { min-width: 8rem; }
 .gate .msg { margin-top: 16px; }
