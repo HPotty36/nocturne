@@ -8,3 +8,4 @@ tests/browser/out/
 /en/
 /sw.js
 /manifest.webmanifest
+/version.txt

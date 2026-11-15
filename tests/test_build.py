@@ -27,7 +27,7 @@ class BuildTests(unittest.TestCase):
 
     def test_page(self):
         html = self.html()
-        for s in ('<html lang="ko">', "<title>Nocturne</title>", '<a class="mark" href="#top">Nocturne</a>',
+        for s in ('<html lang="ko" ', "<title>Nocturne</title>", '<a class="mark" href="#top">Nocturne</a>',
                   '<li><a href="#river">강</a></li>', '<h2>강</h2><p class="room-meta"><span class="room-count">2점</span></p>',
                   '<h2>밤</h2><p class="room-meta"><span class="room-count">1점</span>', '<summary>목록</summary>', '<nav aria-label="전시실">',
                   '<a class="lang" href="en/" lang="en" hreflang="en">English</a>', '사진 3점<br>© 2026 Nocturne<br>'):
@@ -40,7 +40,7 @@ class BuildTests(unittest.TestCase):
 
     def test_english_page(self):
         html = self.en()
-        for s in ('<html lang="en">', '<li><a href="#river">River</a></li>', '<h2>Night</h2><p class="room-meta"><span class="room-count">1</span>',
+        for s in ('<html lang="en" ', '<li><a href="#river">River</a></li>', '<h2>Night</h2><p class="room-meta"><span class="room-count">1</span>',
                   '<summary>Index</summary>', '<nav aria-label="Rooms">', 'aria-label="Photo viewer"', '>Previous<', '>Next<', '>Close<',
                   '<a class="lang" href="../?lang=ko" lang="ko" hreflang="ko">한국어</a>', '3 photographs<br>',
                   '<a class="foot-admin" href="../admin/">Admin</a>', '<meta name="description" content="3 photographs">'):
@@ -190,6 +190,24 @@ class BuildTests(unittest.TestCase):
             self.assertIn(s, css)
         self.assertRegex(css, r"\.cover-btn img \{[^}]*object-fit: cover;[^}]*object-position: var\(--fx, 50%\) var\(--fy, 50%\);")
 
+    def test_stamp_tells_an_open_page_the_site_was_built_again(self):
+        html, en = self.html(), self.en()
+        stamp = (self.root / "version.txt").read_text(encoding="utf-8")
+        self.assertRegex(stamp, r"^[0-9a-f]{12}\n$")
+        for page in (html, en):
+            self.assertIn(f'<html lang="{"ko" if page is html else "en"}" data-stamp="{stamp.strip()}">', page)
+        self.assertIn("fetch('version.txt', { cache: 'no-store' })", html)
+        self.assertIn("fetch('../version.txt', { cache: 'no-store' })", en)
+        self.assertEqual(html.count('<button class="reload" type="button">새로고침</button>'), 2)  # side column and phone foot
+        self.assertEqual(en.count('<button class="reload" type="button">Refresh</button>'), 2)
+        build.build(self.root)  # the same site: the same stamp
+        self.assertEqual((self.root / "version.txt").read_text(encoding="utf-8"), stamp)
+        data = photolib.load_data(self.root)
+        data["rooms"][0]["photos"][0]["title"] += " 2"
+        photolib.save_data(self.root, data)
+        build.build(self.root)  # a changed title: another stamp
+        self.assertNotEqual((self.root / "version.txt").read_text(encoding="utf-8"), stamp)
+
     def test_room_meta_lies_on_its_side(self):
         # the name stands; "10점" and the span lie together as one line (no upright number beside a lying span)
         css = self.css()
@@ -244,9 +262,9 @@ class BuildTests(unittest.TestCase):
         build.build(self.root, out)
         for p in ("index.html", "en/index.html", "photos/thumb/a1.jpg", "photos/full/n1.jpg", "admin/index.html",
                   "admin/sw.js",
-                  "icons/icon-512.png", "manifest.webmanifest", "sw.js"):
+                  "icons/icon-512.png", "manifest.webmanifest", "sw.js", "version.txt"):
             self.assertTrue((out / p).exists(), p)
-        for p in ("index.html", "sw.js", "manifest.webmanifest"):
+        for p in ("index.html", "sw.js", "manifest.webmanifest", "version.txt"):
             self.assertFalse((self.root / p).exists(), p)
         for p in ("src", "queue"):
             self.assertFalse((out / p).exists(), p)

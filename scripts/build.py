@@ -47,9 +47,9 @@ SW_VERSION, SW_PHOTOS, SW_COVER = "'__VERSION__'", "[/*__PHOTOS__*/]", "'' /*__C
 # Screen text per language. `view` and `count` are templates: {title}, {n}.
 STRINGS = {
     "ko": {"menu": "목록", "prev": "이전", "next": "다음", "close": "닫기", "admin": "관리", "nav": "전시실",
-           "viewer": "사진 크게 보기", "switch": "English", "view": "{title} 크게 보기", "count": "{n}점"},
+           "viewer": "사진 크게 보기", "switch": "English", "reload": "새로고침", "view": "{title} 크게 보기", "count": "{n}점"},
     "en": {"menu": "Index", "prev": "Previous", "next": "Next", "close": "Close", "admin": "Admin", "nav": "Rooms",
-           "viewer": "Photo viewer", "switch": "한국어", "view": "View {title}", "count": "{n}"},
+           "viewer": "Photo viewer", "switch": "한국어", "reload": "Refresh", "view": "View {title}", "count": "{n}"},
 }
 
 # Per page: where it is written, the prefix its asset and admin links need, the language toggle, and the
@@ -207,7 +207,7 @@ def room_html(room, facts, lang, base, first):
             f'<div class="hang">{prints}\n</div></section>')
 
 
-def render_page(template, data, facts, lang, redirect):
+def render_page(template, data, facts, lang, redirect, stamp):
     """The template filled for one language. Everything from photos.json is escaped on the way in.
 
     redirect is the text of src/redirect.js. Only the Korean page (the site root, which an installed app opens) carries
@@ -226,6 +226,7 @@ def render_page(template, data, facts, lang, redirect):
     description = site["description_en"] if lang == "en" and site.get("description_en") else site["description"]
     values = {
         "__LANG__": lang,
+        "__STAMP__": stamp,
         "__REDIRECT__": f"<script>{redirect}</script>" if lang == "ko" else "",
         "__DESCRIPTION__": esc(description.format(total=total)),
         "__TITLE__": esc(site["title"]),
@@ -242,6 +243,7 @@ def render_page(template, data, facts, lang, redirect):
         "__COPYRIGHT__": esc(site["copyright"]),
         "__BASE__": base,
         "__ADMIN__": esc(strings["admin"]),
+        "__RELOAD__": esc(strings["reload"]),
         "__COVER__": cover,
         "__ROOMS__": "\n".join(room_html(r, facts, lang, base, i == 0) for i, r in enumerate(rooms)),
         "__VIEWERLABEL__": esc(strings["viewer"]),
@@ -287,8 +289,20 @@ def sw_text(template, pages, manifest, photos, cover, icons=()):
             .replace(SW_COVER, json.dumps(cover)))
 
 
+def stamp_of(template, redirect, data, facts):
+    """What the site shows, as 12 hex digits: the page (data-stamp) and version.txt carry it, and an open page
+    loads itself again when version.txt no longer says what the page does. It covers the template, the redirect
+    script, photos.json and every photo's hashed URLs (a photo replaced under the same name changes them)."""
+    digest = hashlib.sha256()
+    urls = sorted(f"{name} {f['thumb']} {f['full']}" for name, f in facts.items())
+    for part in (template, redirect, json.dumps(data, ensure_ascii=False, sort_keys=True), "\n".join(urls)):
+        digest.update(part.encode("utf-8"))
+        digest.update(b"\0")
+    return digest.hexdigest()[:12]
+
+
 def build(root, out=None):
-    """Write index.html, en/index.html, manifest.webmanifest and sw.js to root, or to out with photos/, icons/ and
+    """Write index.html, en/index.html, manifest.webmanifest, sw.js and version.txt to root, or to out with photos/, icons/ and
     admin/ copied.
 
     Returns {"total": photos on show, "rooms": number of rooms}.
@@ -308,14 +322,16 @@ def build(root, out=None):
 
     template = (root / "src" / "template.html").read_text(encoding="utf-8")
     redirect = (root / "src" / "redirect.js").read_text(encoding="utf-8").strip()
-    pages = {lang: render_page(template, data, facts, lang, redirect) for lang in PAGES}
+    stamp = stamp_of(template, redirect, data, facts)
+    pages = {lang: render_page(template, data, facts, lang, redirect, stamp) for lang in PAGES}
     manifest = manifest_text(data["site"]["description"].format(total=total))
     photos = [{"thumb": facts[p["file"]]["thumb"], "full": facts[p["file"]]["full"]} for r in rooms for p in r["photos"]]
     cover = facts[data["cover"]]["full"] if data.get("cover") in facts else ""  # only a cover that is hung counts
     sw = sw_text((root / "src" / "sw.js").read_text(encoding="utf-8"), pages, manifest, photos, cover, icon_files(root))
 
     dest = root if out is None else Path(out)
-    files = {**{page["file"]: pages[lang] for lang, page in PAGES.items()}, "manifest.webmanifest": manifest, "sw.js": sw}
+    files = {**{page["file"]: pages[lang] for lang, page in PAGES.items()}, "manifest.webmanifest": manifest, "sw.js": sw,
+             "version.txt": stamp + "\n"}
     for name, text in files.items():
         path = dest / name
         path.parent.mkdir(parents=True, exist_ok=True)

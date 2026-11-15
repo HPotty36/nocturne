@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="__LANG__">
+<html lang="__LANG__" data-stamp="__STAMP__">
 <head>
 <meta charset="utf-8">
 __REDIRECT__
@@ -186,6 +186,10 @@ h2 { font: inherit; }
   color: var(--ink-dim);
 }
 .foot .foot-admin { text-decoration: underline; text-underline-offset: 0.2em; }  /* tells it from the fine print around it */
+/* "새로고침": reads the site again (an installed app has no reload button of its own) */
+.reload { padding: 0; border: 0; background: none; cursor: pointer; transition: color 0.15s ease; }
+.reload:hover { color: var(--ink); }
+.foot .reload { text-decoration: underline; text-underline-offset: 0.2em; }
 
 /* ---------- wide screens: the side column stays while the photos scroll ---------- */
 @media (min-width: 960px) {
@@ -320,12 +324,12 @@ h2 { font: inherit; }
       <ul class="rooms rooms-side">__NAV__</ul>
     </nav>
     <a class="lang" href="__SWITCHHREF__" lang="__SWITCHLANG__" hreflang="__SWITCHLANG__">__SWITCH__</a>
-    <p class="fine">__TOTALTEXT__<br>__COPYRIGHT__<br><a class="foot-admin" href="__BASE__admin/">__ADMIN__</a></p>
+    <p class="fine">__TOTALTEXT__<br>__COPYRIGHT__<br><a class="foot-admin" href="__BASE__admin/">__ADMIN__</a><br><button class="reload" type="button">__RELOAD__</button></p>
   </aside>
   <main class="main">
 __COVER__
 __ROOMS__
-    <footer class="foot">__TOTALTEXT__ · __COPYRIGHT__ · <a class="foot-admin" href="__BASE__admin/">__ADMIN__</a></footer>
+    <footer class="foot">__TOTALTEXT__ · __COPYRIGHT__ · <a class="foot-admin" href="__BASE__admin/">__ADMIN__</a> · <button class="reload" type="button">__RELOAD__</button></footer>
   </main>
 </div>
 <div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="__VIEWERLABEL__" hidden>
@@ -549,6 +553,7 @@ __ROOMS__
 
   function close() {
     lb.hidden = true;
+    if (renewing) location.reload();  // a newer site came out while the viewer was open
     document.documentElement.classList.remove('lb-open');
     lbImg.removeAttribute('src');
     if (lastFocus && lastFocus.focus) lastFocus.focus();
@@ -609,6 +614,37 @@ __ROOMS__
   stage.addEventListener('click', function (e) {
     if (swiped) { swiped = false; return; }
     if (e.target === stage) close();
+  });
+
+  /* ---------- new photos: the build stamps the page (data-stamp) and writes the same stamp to version.txt. The
+     page reads that file when it comes back into view, and once a minute while it is looked at; a different stamp
+     means the site was built again (a photo went up, was changed or taken down), and the page loads itself again.
+     Not under an open viewer: then when it closes. A stamp is acted on once per tab, so a page that comes back
+     old (a slow network gives the copy on the device) does not load itself in circles. ---------- */
+  var stamp = document.documentElement.getAttribute('data-stamp');
+  var renewing = false;
+  function renew(next) {
+    try {
+      if (sessionStorage.getItem('nocturne.stamp') === next) return;
+      sessionStorage.setItem('nocturne.stamp', next);
+    } catch (e) { return; }  // nowhere to remember it: never risk a loop
+    if (lb.hidden) location.reload();
+    else renewing = true;
+  }
+  function look() {
+    if (!stamp || document.hidden || !/^https?:$/.test(location.protocol)) return;
+    fetch('__BASE__version.txt', { cache: 'no-store' }).then(function (res) { return res.ok ? res.text() : ''; })
+      .then(function (text) {
+        var next = text.trim();
+        if (/^[0-9a-f]{12}$/.test(next) && next !== stamp) renew(next);
+      }).catch(function () {});
+  }
+  document.addEventListener('visibilitychange', look);
+  window.addEventListener('pageshow', function (e) { if (e.persisted) look(); });
+  setInterval(look, 60000);
+  look();
+  all('.reload').forEach(function (button) {
+    button.addEventListener('click', function () { location.reload(); });
   });
 
   /* ---------- install and offline: sw.js keeps the exhibition on the device (not when opened as a file);
