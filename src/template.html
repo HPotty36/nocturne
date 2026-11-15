@@ -549,9 +549,24 @@ __ROOMS__
     lb.hidden = false;
     document.documentElement.classList.add('lb-open');
     btnClose.focus();
+    // the viewer is a step in the history: Back (a mouse's back button, a phone's back gesture) shuts it
+    // instead of leaving the site
+    try { history.pushState({ viewer: true }, ''); } catch (e) {}
   }
 
+  /* Shut by the person (닫기, Esc, a click beside the photo): go back over the viewer's step, and popstate shuts
+     it; with no such step (pushState refused), shut it here. */
   function close() {
+    if (history.state && history.state.viewer) history.back();
+    else shut();
+  }
+  window.addEventListener('popstate', function () {
+    if (!lb.hidden) shut();
+  });
+  // a page loaded again while the viewer was open keeps that step with nothing behind it: make it a plain one
+  try { if (history.state && history.state.viewer) history.replaceState(null, ''); } catch (e) {}
+
+  function shut() {
     lb.hidden = true;
     if (renewing) location.reload();  // a newer site came out while the viewer was open
     document.documentElement.classList.remove('lb-open');

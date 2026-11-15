@@ -208,6 +208,13 @@ class BuildTests(unittest.TestCase):
         build.build(self.root)  # a changed title: another stamp
         self.assertNotEqual((self.root / "version.txt").read_text(encoding="utf-8"), stamp)
 
+    def test_back_shuts_the_viewer(self):
+        # text only: the behaviour is checked in a browser
+        html = self.html()
+        for s in ("history.pushState({ viewer: true }, '')", "if (history.state && history.state.viewer) history.back();",
+                  "window.addEventListener('popstate', function () {\n    if (!lb.hidden) shut();"):
+            self.assertIn(s, html)
+
     def test_room_meta_lies_on_its_side(self):
         # the name stands; "10점" and the span lie together as one line (no upright number beside a lying span)
         css = self.css()

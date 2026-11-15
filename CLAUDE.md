@@ -39,7 +39,7 @@ scripts/
 tests/                   Python unittest, tests/js (node), fake_github.py(가짜 GitHub), browser/(브라우저 점검)
 docs/superpowers/        설계 문서(specs)와 구현 계획(plans)
 originals/               원본 사진. git에 올리지 않음 (.gitignore)
-index.html, en/index.html, manifest.webmanifest, sw.js
+index.html, en/index.html, manifest.webmanifest, sw.js, version.txt
                          로컬 빌드 결과. git에 올리지 않음 (.gitignore, 루트만). 직접 고치지 말 것
 requirements-ai.txt      Claude SDK(anthropic), 버전과 해시로 고정. draft.yml만 설치한다 (사이트 빌드·시험·PC에는 필요 없음)
 README.md / README.ko.md 저장소 첫 화면 소개 (영어 기본 / 한국어, 내용 같음)
@@ -235,7 +235,7 @@ GitHub Actions의 Claude 단계와 대표 사진 고르기 단계는 저장소 �
 - 사이트 어디에도 소유자의 실명을 넣지 않는다. 사이트 이름은 "Nocturne".
 - 저장소와 사이트에 들어가는 사진은 반드시 메타데이터를 지운 사본이다 (관리 페이지의 브라우저 변환 또는 `prepare_photos.py`). 원본에는 GPS 위치가 들어 있을 수 있다. `photos/`나 `queue/`에 원본을 직접 복사하지 말 것.
 - 저장소가 공개라서 올린 파일은 누구나 볼 수 있다. 대기 중인 사진은 `queue/`에서 몇 분간 공개 상태로 머물고, 버리거나 전시에서 빼도 git 기록에는 남는다. 원본(`originals/`)은 `.gitignore`로 제외되어 있다.
-- `index.html`, `en/index.html`, `manifest.webmanifest`, `sw.js`는 Actions가 만든다. 커밋하지 않는다 (`.gitignore`는 루트의 `/index.html`, `/en/`, `/manifest.webmanifest`, `/sw.js`만 막는다).
+- `index.html`, `en/index.html`, `manifest.webmanifest`, `sw.js`, `version.txt`는 Actions가 만든다. 커밋하지 않는다 (`.gitignore`는 루트의 `/index.html`, `/en/`, `/manifest.webmanifest`, `/sw.js`, `/version.txt`만 막는다).
 - 장소 이름은 확인된 것만 쓴다. 사진만 보고 추측한 장소를 제목이나 설명에 넣지 않는다 (AI 프롬프트에도 쓰지 말라고 넣어 두었다. 잘못 들어가면 전시 중 탭에서 고친다).
 - `alt`는 화면 낭독기용 설명이다. 무엇이 찍혔는지 한 문장으로, 흑백이면 끝에 "흑백 사진"을 덧붙인다. 영어 `alt_en`은 같은 규칙으로 끝에 ", black-and-white photo"를 덧붙인다.
 - 문구는 한국어, 짧고 평이하게.
@@ -265,8 +265,9 @@ GitHub Actions의 Claude 단계와 대표 사진 고르기 단계는 저장소 �
 - 방은 두 칸이다: 왼쪽 좁은 기둥에 방 머리가 세로쓰기(`vertical-rl`)로 서고 오른쪽에 사진이 걸린다 (사이 `clamp(20px, 2.4vw, 36px)`, 폰 10px). 방 머리는 방 이름(굵기 300), 그 아래로 "7점"과 기간(12px, `--ink-dim`)이다. 한국어 방 이름만 서고, 그 아래 점수와 기간은 함께 한 줄로 책등의 작은 글씨처럼 옆으로 눕는다 (`.room-meta`의 `text-orientation: sideways`. "10점"의 "점"도 눕는다). 영어 방 이름도 눕는다. 방 머리는 방을 내려가는 동안 화면 위쪽(폰은 위 줄 아래 8px)에 붙어 따라온다. 방 사이는 `clamp(96px, 11vw, 160px)`.
 - 그리드는 JS가 방마다 행을 나눠 모든 행을 가로폭에 꽉 맞춘다 (동적 계획법으로 목표 높이에 가장 가깝게. 목표는 걸리는 폭 1100px 이상 300, 720px 이상 240, 그 아래 180이고 400px 미만은 150: 폰에서 방 이름 기둥만큼 좁아진 줄에도 두 장씩 서게). 사진은 잘리지 않고 원래 비율을 유지한다 (자르는 것은 대표 사진뿐이다). 행 높이가 목표의 1.6배를 넘으면 그 행은 목표 높이로 두고 가로를 채우지 않는다 (1~2장인 방). 사진 사이는 `clamp(10px, 1.3vw, 16px)`. 사진이 없는 방은 건너뛴다.
 - 라벨은 사진 아래 7px에 "제목, 날짜"(날짜는 `--ink-dim`, 없으면 제목만)다. 대표 사진도 같다 (카메라는 쓰지 않는다). 길면 줄을 바꾼다.
-- 크게 보기는 검은 화면에 사진을 들어가는 만큼 크게 둔다. 아래 한 줄: 왼쪽 "제목, 날짜", 오른쪽 "3 / 23"과 글자 버튼 "이전 · 다음 · 닫기"(평소 `--ink-dim`, 마우스나 포커스에 `--ink`, 높이 24px 이상, 960px 미만이나 손가락 화면은 40px 이상). 좁으면 두 줄로 내려간다. 처음엔 썸네일을 보여주고 원본이 받아지면 바꾸며(닫은 뒤나 다른 사진으로 넘어간 뒤 늦게 받아진 원본은 쓰지 않는다) 앞뒤 원본을 미리 받는다. 방향키, 스와이프, Esc, 사진 바깥 클릭으로 닫기. 열면 "닫기"에 포커스, Tab은 세 버튼 안에서 돌고, 닫으면 연 자리로 포커스가 돌아간다. 영어 페이지에서 영어 제목이 없으면 캡션에 `lang="ko"`를 붙인다.
+- 크게 보기는 검은 화면에 사진을 들어가는 만큼 크게 둔다. 아래 한 줄: 왼쪽 "제목, 날짜", 오른쪽 "3 / 23"과 글자 버튼 "이전 · 다음 · 닫기"(평소 `--ink-dim`, 마우스나 포커스에 `--ink`, 높이 24px 이상, 960px 미만이나 손가락 화면은 40px 이상). 좁으면 두 줄로 내려간다. 처음엔 썸네일을 보여주고 원본이 받아지면 바꾸며(닫은 뒤나 다른 사진으로 넘어간 뒤 늦게 받아진 원본은 쓰지 않는다) 앞뒤 원본을 미리 받는다. 방향키, 스와이프, Esc, 사진 바깥 클릭으로 닫기. 크게 보기는 방문 기록의 한 걸음이라(`history.pushState`) 뒤로 가기(마우스의 뒤로 버튼, 폰의 뒤로 동작)를 누르면 사이트를 떠나지 않고 크게 보기만 닫힌다. 닫기·Esc·바깥 클릭도 그 걸음을 되돌린다. 열면 "닫기"에 포커스, Tab은 세 버튼 안에서 돌고, 닫으면 연 자리로 포커스가 돌아간다. 영어 페이지에서 영어 제목이 없으면 캡션에 `lang="ko"`를 붙인다.
 - 언어 링크("English"/"한국어")를 누르면 `localStorage`의 `nocturne.lang`에 그 언어를 적는다. 한국어 페이지 머리의 작은 스크립트(`src/redirect.js`를 빌드가 그대로 인라인으로 넣는다)가 이 값(없으면 브라우저 언어)을 보고 영어 페이지로 보낸다. 영어 페이지의 "한국어" 링크는 `../?lang=ko`로 간다: 주소에 `lang=ko`가 있으면 그 스크립트는 아무것도 하지 않으므로, 저장소가 막힌 브라우저에서도 한국어를 고른 사람이 영어로 되돌려 보내지지 않는다. 한국어 페이지의 "English" 링크는 `en/` 그대로다.
+- 새 사진이 저절로 보인다: 빌드가 두 페이지(`<html data-stamp>`)와 `version.txt`에 같은 도장(템플릿·`photos.json`·사진 주소의 해시 12자리)을 찍는다. 열린 페이지는 열 때, 다른 화면에서 돌아올 때, 보고 있는 동안 1분마다 `version.txt`를 읽고(캐시 없이), 도장이 다르면 스스로 다시 불러온다. 크게 보기가 열려 있으면 닫은 뒤에 한다. 같은 도장으로는 탭마다 한 번만 한다 (`sessionStorage`의 `nocturne.stamp`. 느린 네트워크에서 옛 사본이 다시 와도 맴돌지 않게). 작은 글씨의 "새로고침"(영어 "Refresh")은 손으로 다시 불러온다: 설치한 앱에는 브라우저의 새로고침 버튼이 없다. 사진을 올린 뒤 AI가 쓰고 사이트가 다시 만들어지기까지의 몇 분은 그대로다.
 - 관리 페이지는 375px 폭에서 쓸 수 있어야 한다. CSP 때문에 인라인 스크립트·스타일을 쓰지 않는다.
 - 사이트의 "관리"(작은 글씨, `--ink-dim`, 누구에게나 보임)는 관리 페이지로 가고, 관리 페이지 위쪽의 "Nocturne"은 사이트를 새 탭에 연다 (관리 페이지가 열린 채 로그인이 유지된다). 설치한 앱 안(`display-mode: standalone` 또는 iOS의 `navigator.standalone`)에서는 새 탭이 앱 밖(아이폰·아이패드는 Safari)으로 나가므로 같은 창에서 사이트로 간다. 이때 메모리의 로그인은 끝나고, 다시 "관리"를 누르면 저절로 로그인된다.
 
@@ -289,7 +290,7 @@ GitHub Actions의 Claude 단계와 대표 사진 고르기 단계는 저장소 �
 - 저장소: https://github.com/HPotty36/nocturne (공개)
 - 사이트: https://hpotty36.github.io/nocturne/
 - 관리 페이지: https://hpotty36.github.io/nocturne/admin/
-- GitHub Pages는 Actions로 배포한다 (`build_type=workflow`). `main`에 `src/**`, `photos/**`, `admin/**`, `icons/**`, `scripts/build.py`, `scripts/photolib.py`, `requirements.txt`가 바뀌어 push되면 `site.yml`이 `build.py --out _site`로 `index.html`, `en/index.html`, `manifest.webmanifest`, `sw.js`, `photos/`, `icons/`, `admin/`만 올린다 (1~2분). 문서만 바뀐 push는 다시 만들지 않는다. 수동 실행은 `gh workflow run site.yml`. `queue/`, `src/`, `scripts/`, `tests/`, `auth/`는 사이트로 서빙되지 않는다 (`auth/worker.js`는 Cloudflare에 손으로 붙여 넣는다).
+- GitHub Pages는 Actions로 배포한다 (`build_type=workflow`). `main`에 `src/**`, `photos/**`, `admin/**`, `icons/**`, `scripts/build.py`, `scripts/photolib.py`, `requirements.txt`가 바뀌어 push되면 `site.yml`이 `build.py --out _site`로 `index.html`, `en/index.html`, `manifest.webmanifest`, `sw.js`, `version.txt`, `photos/`, `icons/`, `admin/`만 올린다 (1~2분). 문서만 바뀐 push는 다시 만들지 않는다. 수동 실행은 `gh workflow run site.yml`. `queue/`, `src/`, `scripts/`, `tests/`, `auth/`는 사이트로 서빙되지 않는다 (`auth/worker.js`는 Cloudflare에 손으로 붙여 넣는다).
 - `.nojekyll`은 Actions 배포에서는 필요 없지만 두어도 해롭지 않다.
 - 저장소 이름을 `across-gallery`에서 `nocturne`으로 바꿨기 때문에 옛 주소(`hpotty36.github.io/across-gallery/`)는 열리지 않는다. 이동 안내는 두지 않았다.
 
