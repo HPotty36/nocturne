@@ -289,14 +289,15 @@ def sw_text(template, pages, manifest, photos, cover, icons=()):
             .replace(SW_COVER, json.dumps(cover)))
 
 
-def stamp_of(template, redirect, data, facts):
+def stamp_of(pages):
     """What the site shows, as 12 hex digits: the page (data-stamp) and version.txt carry it, and an open page
-    loads itself again when version.txt no longer says what the page does. It covers the template, the redirect
-    script, photos.json and every photo's hashed URLs (a photo replaced under the same name changes them)."""
+    loads itself again when version.txt no longer says what the page does. It is a hash of the two pages as they are
+    written but with an empty stamp, so it covers everything they show (the template, the redirect script, the
+    build's own text, the photos' texts and their hashed URLs) and nothing they do not (who picked the cover, the AI
+    record, a room's note)."""
     digest = hashlib.sha256()
-    urls = sorted(f"{name} {f['thumb']} {f['full']}" for name, f in facts.items())
-    for part in (template, redirect, json.dumps(data, ensure_ascii=False, sort_keys=True), "\n".join(urls)):
-        digest.update(part.encode("utf-8"))
+    for lang in sorted(pages):
+        digest.update(pages[lang].encode("utf-8"))
         digest.update(b"\0")
     return digest.hexdigest()[:12]
 
@@ -322,7 +323,7 @@ def build(root, out=None):
 
     template = (root / "src" / "template.html").read_text(encoding="utf-8")
     redirect = (root / "src" / "redirect.js").read_text(encoding="utf-8").strip()
-    stamp = stamp_of(template, redirect, data, facts)
+    stamp = stamp_of({lang: render_page(template, data, facts, lang, redirect, "") for lang in PAGES})
     pages = {lang: render_page(template, data, facts, lang, redirect, stamp) for lang in PAGES}
     manifest = manifest_text(data["site"]["description"].format(total=total))
     photos = [{"thumb": facts[p["file"]]["thumb"], "full": facts[p["file"]]["full"]} for r in rooms for p in r["photos"]]

@@ -4,6 +4,7 @@ import re
 import shutil
 import tempfile
 import unittest
+from unittest import mock
 import urllib.parse
 from pathlib import Path
 
@@ -207,6 +208,26 @@ class BuildTests(unittest.TestCase):
         photolib.save_data(self.root, data)
         build.build(self.root)  # a changed title: another stamp
         self.assertNotEqual((self.root / "version.txt").read_text(encoding="utf-8"), stamp)
+
+    def stamp(self):
+        build.build(self.root)
+        return (self.root / "version.txt").read_text(encoding="utf-8")
+
+    def test_stamp_ignores_what_the_pages_do_not_show(self):
+        # who picked the cover, the AI record and a room's note are not on the pages: open pages must not load again
+        stamp = self.stamp()
+        data = photolib.load_data(self.root)
+        data["cover_pick"] = {"by": "person"}
+        data["rooms"][0]["note"] += " 2"
+        data["rooms"][0]["photos"][1]["ai"]["confidence"] = 0.9
+        photolib.save_data(self.root, data)
+        self.assertEqual(self.stamp(), stamp)
+
+    def test_stamp_follows_the_build_s_own_text(self):
+        # a change to build.py alone (its screen text) changes the pages, so it must change the stamp
+        stamp = self.stamp()
+        with mock.patch.dict(build.STRINGS["ko"], {"menu": "방 목록"}):
+            self.assertNotEqual(self.stamp(), stamp)
 
     def test_back_shuts_the_viewer(self):
         # text only: the behaviour is checked in a browser
