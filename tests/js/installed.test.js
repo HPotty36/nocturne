@@ -1,4 +1,4 @@
-// Whether the admin page runs as an installed app (the site's or its own), where a new tab would leave the app.
+// Whether the admin page runs inside an installed app (the site's, whose scope holds admin/), where a new tab would leave the app.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { installedApp } from '../../admin/lib/installed.js';

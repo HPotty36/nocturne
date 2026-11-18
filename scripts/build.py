@@ -353,7 +353,7 @@ def main(argv=None):
     except BuildError as e:
         print(e, file=sys.stderr)
         sys.exit(1)
-    print(f"index.html, en/index.html, manifest.webmanifest, sw.js 생성 완료: 사진 {result['total']}점, 방 {result['rooms']}개")
+    print(f"index.html, en/index.html, manifest.webmanifest, sw.js, version.txt 생성 완료: 사진 {result['total']}점, 방 {result['rooms']}개")
     if args.out is not None:
         print(f"출력 폴더: {args.out}")
 
