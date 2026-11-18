@@ -324,12 +324,12 @@ h2 { font: inherit; }
       <ul class="rooms rooms-side">__NAV__</ul>
     </nav>
     <a class="lang" href="__SWITCHHREF__" lang="__SWITCHLANG__" hreflang="__SWITCHLANG__">__SWITCH__</a>
-    <p class="fine">__TOTALTEXT__<br>__COPYRIGHT__<br><a class="foot-admin" href="__BASE__admin/">__ADMIN__</a><br><button class="reload" type="button">__RELOAD__</button></p>
+    <p class="fine">__TOTALTEXT__<br>__COPYRIGHT__<br><a class="foot-admin" href="__BASE__admin/">__ADMIN__</a><span class="reload-line" hidden><br><button class="reload" type="button">__RELOAD__</button></span></p>
   </aside>
   <main class="main">
 __COVER__
 __ROOMS__
-    <footer class="foot">__TOTALTEXT__ · __COPYRIGHT__ · <a class="foot-admin" href="__BASE__admin/">__ADMIN__</a> · <button class="reload" type="button">__RELOAD__</button></footer>
+    <footer class="foot">__TOTALTEXT__ · __COPYRIGHT__ · <a class="foot-admin" href="__BASE__admin/">__ADMIN__</a><span class="reload-line" hidden> · <button class="reload" type="button">__RELOAD__</button></span></footer>
   </main>
 </div>
 <div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="__VIEWERLABEL__" hidden>
@@ -684,6 +684,7 @@ __ROOMS__
   all('.reload').forEach(function (button) {
     button.addEventListener('click', function () { location.reload(); });
   });
+  all('.reload-line').forEach(function (line) { line.hidden = false; });  // shown only where it works
 
   /* ---------- install and offline: sw.js keeps the exhibition on the device (not when opened as a file);
      if the browser refuses it (storage blocked, say), the page simply works as before ---------- */

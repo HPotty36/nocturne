@@ -201,6 +201,10 @@ class BuildTests(unittest.TestCase):
         self.assertIn("fetch('../version.txt', { cache: 'no-store' })", en)
         self.assertEqual(html.count('<button class="reload" type="button">새로고침</button>'), 2)  # side column and phone foot
         self.assertEqual(en.count('<button class="reload" type="button">Refresh</button>'), 2)
+        # without JS the button would do nothing: it and its separator stay hidden until the script shows them
+        self.assertIn('<span class="reload-line" hidden><br><button class="reload" type="button">새로고침</button></span>', html)
+        self.assertIn('<span class="reload-line" hidden> · <button class="reload" type="button">새로고침</button></span>', html)
+        self.assertIn("all('.reload-line').forEach(function (line) { line.hidden = false; });", html)
         build.build(self.root)  # the same site: the same stamp
         self.assertEqual((self.root / "version.txt").read_text(encoding="utf-8"), stamp)
         data = photolib.load_data(self.root)
