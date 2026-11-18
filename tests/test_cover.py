@@ -201,6 +201,16 @@ class FailureTests(RepoCase):
         self.assertNotIn("cover_focus", data)
 
 
+    def test_a_failure_on_one_photo_is_not_noted_on_another_pinned_meanwhile(self):
+        # Claude fails on where to crop a2 while a person pins n1: the failure is a2's, so n1 still gets its focus
+        self.put(with_pick(SITE, cover="a2", cover_pick={"by": "person"}, cover_focus=None))
+        pinned = with_pick(SITE, cover="n1", cover_pick={"by": "person"}, cover_focus=None)
+        with self.assertRaises(curator.CuratorError):
+            cover.run(self.gh, FakePicker(fail=curator.CLAUDE_CUT_OFF, during=lambda: self.put(pinned)))
+        self.assertEqual(self.photos(), pinned)
+        self.assertEqual(cover.plan(self.photos()), "focus")
+
+
 class MainTests(RepoCase):
     def main(self, key="sk-test", picker=None):
         out = self.tmp / "output.txt"

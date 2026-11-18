@@ -105,7 +105,7 @@ def run(gh, picker=None, model=None):
         answer = picker(pictures, data.get("cover"), focus_only=todo == "focus", model=model)
     except curator.CuratorError as err:
         if paid(str(err)):
-            _record_tried(gh, todo, seen)
+            _record_tried(gh, todo, seen, data.get("cover"))
         raise
     changed = []
 
@@ -129,12 +129,15 @@ def run(gh, picker=None, model=None):
     return {"result": "picked" if todo == "pick" else "focused", "changed": changed[0], "file": answer["file"]}
 
 
-def _record_tried(gh, todo, seen):
+def _record_tried(gh, todo, seen, cover):
     """Note in cover_pick that the photos with fingerprint `seen` were tried and failed, while photos.json still calls for
-    `todo` (the other keys of cover_pick stay)."""
+    `todo` (the other keys of cover_pick stay). For "focus" the try was about `cover`: if a person pinned another photo
+    meanwhile, that one has not been tried, and nothing is noted."""
     def build(read_json):
         fresh = read_json(DATA)
         if fresh is None or plan(fresh) != todo:
+            return {}
+        if todo == "focus" and fresh.get("cover") != cover:
             return {}
         pick = fresh.get("cover_pick")
         fresh["cover_pick"] = {**(pick if isinstance(pick, dict) else {}), "tried": seen}
