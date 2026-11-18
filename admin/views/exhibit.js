@@ -64,6 +64,17 @@ export function editsFor(shown, typed) {
   return edits;
 }
 
+/** What a row's fields hold now: {room, title, alt, title_en, alt_en}. */
+function typedOf(row) {
+  return { room: row.room.value, ...Object.fromEntries(TEXTS.map((key) => [key, row.texts[key].value])) };
+}
+
+/** Whether leaving the page would lose work in this row: a change typed and not saved, or a save still on its way. */
+export function rowUnsaved(row) {
+  if (row.busy) return true;
+  return Boolean(row.shown) && Object.keys(editsFor(row.shown, typedOf(row))).length > 0;
+}
+
 export class ExhibitStore {
   data = null; // src/photos.json as last read or committed
   pending = new Set(); // files with a redraft waiting in queue/
@@ -215,6 +226,12 @@ let view = null; // the exhibit on the page; renderExhibit on the same root keep
  * `forget`: files whose redraft was thrown away in the queue (their rows stop waiting, without "AI가 새로 썼어요").
  * Resolves once photos.json has been read (errors are shown in the view, not thrown).
  */
+/** Rows of the 전시 중 tab holding work that leaving the page would lose (see rowUnsaved); 0 while it is not open. */
+export function exhibitUnsaved() {
+  if (!view) return 0;
+  return [...view.rows.values()].filter(rowUnsaved).length;
+}
+
 export function renderExhibit(root, ctx, { forget = [] } = {}) {
   if (!view || view.root !== root || !view.list.isConnected) {
     if (view) clearTimeout(view.timer);
@@ -514,7 +531,7 @@ async function act(v, row, busyText, task) {
 }
 
 async function saveRow(v, row) {
-  const typed = { room: row.room.value, ...Object.fromEntries(TEXTS.map((key) => [key, row.texts[key].value])) };
+  const typed = typedOf(row);
   let changes;
   try {
     changes = v.store.edits(row.file, row.shown, typed); // only what the person changed; checked before anything is sent

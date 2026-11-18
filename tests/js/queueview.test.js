@@ -266,6 +266,19 @@ test('a failed upload keeps its processed copies; 다시 올리기 commits them 
   assert.equal(await fake.value('queue/a/full.jpg').text(), 'full a.jpg');
 });
 
+test('unsent counts the photos only this page holds: still going up, or failed and still sendable', async () => {
+  const fake = fakeGitHub({ [DATA]: site() });
+  const store = makeStore(fake);
+  assert.equal(store.unsent, 0);
+  fake.failCommit(new GitHubError('GitHub 502: Injected failure (fail_next)', 502));
+  const run = store.addFiles([{ name: 'a.jpg' }, { name: 'b.jpg' }, { name: 'bad.heic', bad: true }]);
+  assert.equal(store.unsent, 3, 'all three wait their turn');
+  await run;
+  assert.equal(store.unsent, 1, 'a failed but can be sent again; b is in queue/; bad has nothing left to send');
+  await store.reupload(byName(store, 'a').key);
+  assert.equal(store.unsent, 0);
+});
+
 test('an unreadable photo shows its ImageError, takes no name and cannot be sent again', async () => {
   const fake = fakeGitHub({ [DATA]: site() });
   const process = fakeProcess();

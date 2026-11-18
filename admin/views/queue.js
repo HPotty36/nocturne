@@ -250,6 +250,18 @@ export class QueueStore {
   // --- uploading ---
 
   /**
+   * Photos only this page holds, which leaving it would lose: still going up, or failed and still sendable with
+   * 다시 올리기. (A photo shared to the page also stays in its cache until it is in queue/.)
+   */
+  get unsent() {
+    let n = 0;
+    for (const card of this.cards.values()) {
+      if (card.stage === 'upload' || (card.stage === 'upload-failed' && !card.final)) n++;
+    }
+    return n;
+  }
+
+  /**
    * Cards for these files show at once; the photos are then processed and sent one by one. Resolves when all are done.
    * shareKeys (optional, one per file) are the cache keys of photos shared to this page: each is handed to onShareDone
    * when that photo is in queue/ (or on show), or when its failed upload is thrown away (dropUpload). A photo whose
@@ -639,6 +651,11 @@ export function closeQueue() {
   v.store.close();
   for (const node of v.nodes.values()) if (node.url) URL.revokeObjectURL(node.url);
   v.nodes.clear();
+}
+
+/** Photos picked on this tab that are not in queue/ yet (QueueStore.unsent); 0 while the tab is not open. */
+export function queueUnsent() {
+  return view ? view.store.unsent : 0;
 }
 
 /** Hand files to the tab as if they had been picked there (window.__nocturne.addFiles, for local browser checks). */

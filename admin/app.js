@@ -27,8 +27,8 @@ import { AuthError, GitHub, GitHubError } from './lib/github.js';
 import { installedApp } from './lib/installed.js';
 import { cacheStorage, pendingShares } from './lib/shared.js';
 import { SiteStatus } from './lib/sitestatus.js';
-import { renderExhibit } from './views/exhibit.js';
-import { addFiles, closeQueue, renderQueue } from './views/queue.js';
+import { exhibitUnsaved, renderExhibit } from './views/exhibit.js';
+import { addFiles, closeQueue, queueUnsent, renderQueue } from './views/queue.js';
 
 const SITE_TEXT = { busy: '사이트 반영 중…', done: '반영됨', failed: '반영 실패' };
 const sharedWaiting = (n) => `공유한 사진 ${n}장이 기다리고 있어요. 로그인하면 올릴 수 있어요`;
@@ -308,7 +308,65 @@ forget(local, OLD_TOKEN_KEY); // the sealed token of the old paste-a-token login
 
 // "Nocturne" opens the site in a new tab, so this page stays open and logged in. In an installed app a new tab would
 // leave the app (an iPad opens Safari), so there it goes to the site in place; "관리" there logs in again by itself.
-if (installedApp(window)) document.querySelector('.brand .mark')?.removeAttribute('target');
+// Going there drops what this page holds, so while a picked photo is not in queue/ yet or a typed change is not saved
+// it asks first.
+const mark = document.querySelector('.brand .mark');
+if (mark && installedApp(window)) {
+  mark.removeAttribute('target');
+  mark.addEventListener('click', (event) => {
+    if (!queueUnsent() && !exhibitUnsaved()) return;
+    event.preventDefault();
+    askToLeave().then((leave) => {
+      if (leave) window.location.assign(mark.href);
+    });
+  });
+}
+
+/** The question before leaving with work on the page; resolves true only for 사이트로 가기 (Esc, 취소 and the backdrop say no). */
+function askToLeave() {
+  const node = document.createElement('dialog');
+  node.className = 'confirm';
+  const title = document.createElement('h2');
+  title.className = 'confirm-title';
+  title.id = 'leave-title';
+  title.textContent = '사이트로 갈까요?';
+  const text = document.createElement('p');
+  text.className = 'confirm-text';
+  text.id = 'leave-text';
+  text.textContent = '아직 올리지 않은 사진이나 저장하지 않은 수정이 있어요. 지금 사이트로 가면 사라져요';
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.className = 'btn btn-quiet';
+  cancel.textContent = '취소';
+  const go = document.createElement('button');
+  go.type = 'button';
+  go.className = 'btn btn-main';
+  go.textContent = '사이트로 가기';
+  const actions = document.createElement('div');
+  actions.className = 'confirm-actions';
+  actions.append(cancel, go);
+  node.append(title, text, actions);
+  node.setAttribute('aria-labelledby', title.id);
+  node.setAttribute('aria-describedby', text.id);
+  cancel.addEventListener('click', () => node.close('stay'));
+  go.addEventListener('click', () => node.close('leave'));
+  node.addEventListener('click', (event) => { // a click on the backdrop, outside the box, is a no
+    if (event.target !== node) return;
+    const box = node.getBoundingClientRect();
+    const inside = event.clientX >= box.left && event.clientX <= box.right && event.clientY >= box.top && event.clientY <= box.bottom;
+    if (!inside) node.close('stay');
+  });
+  document.body.append(node);
+  return new Promise((resolve) => {
+    node.addEventListener('close', () => {
+      node.remove();
+      mark.focus();
+      resolve(node.returnValue === 'leave');
+    }, { once: true });
+    node.showModal();
+    cancel.focus(); // the safe choice first
+  });
+}
 
 const got = readReturn(window.location);
 const action = bootAction({

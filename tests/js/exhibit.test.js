@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { editsFor, ExhibitStore } from '../../admin/views/exhibit.js';
+import { editsFor, ExhibitStore, rowUnsaved } from '../../admin/views/exhibit.js';
 import { GalleryError, serialize } from '../../admin/lib/gallery.js';
 
 const ROOT = new URL('../../', import.meta.url);
@@ -118,6 +118,21 @@ test('editsFor sends nothing for an English text that was absent and is still em
   const shown = { room: 'river', title: '다리 아래', alt: '다리 상판', title_en: '', alt_en: '' };
   assert.deepEqual(editsFor(shown, { ...shown, title_en: '  ' }), {});
   assert.deepEqual(editsFor(shown, { ...shown, title_en: '', alt_en: '\n ' }), {});
+});
+
+test('rowUnsaved: a row with typed changes, or one whose save is on its way, holds work that leaving would lose', () => {
+  const shown = { room: 'river', title: '스카이라인', alt: '강 건너 빌딩', title_en: '', alt_en: '' };
+  const row = (typed = {}, busy = false) => ({
+    shown, busy, room: { value: typed.room ?? shown.room },
+    texts: Object.fromEntries(['title', 'alt', 'title_en', 'alt_en'].map((key) => [key, { value: typed[key] ?? shown[key] }])),
+  });
+  assert.equal(rowUnsaved(row()), false);
+  assert.equal(rowUnsaved(row({ title: '스카이라인 ' })), false, 'only spaces around it: nothing to save');
+  assert.equal(rowUnsaved(row({ alt: '다른 설명' })), true);
+  assert.equal(rowUnsaved(row({ room: 'night' })), true);
+  assert.equal(rowUnsaved(row({ title_en: 'Skyline' })), true);
+  assert.equal(rowUnsaved(row({}, true)), true, 'a save still on its way');
+  assert.equal(rowUnsaved({ ...row(), shown: null }), false, 'a row not drawn yet');
 });
 
 test('store.edits checks the changes before anything is sent', async () => {
