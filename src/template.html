@@ -538,35 +538,58 @@ __ROOMS__
     setLang(lbTitle, p.dataset.titleLang);
     lbDate.textContent = p.dataset.date ? ', ' + p.dataset.date : '';
     lbCount.textContent = (idx + 1) + ' / ' + N;
+    if (history.state && history.state.viewer) {  // the viewer's step names the photo now shown
+      try { history.replaceState({ viewer: p.dataset.slug }, ''); } catch (e) {}
+    }
     preload(idx + 1);
     preload(idx - 1);
   }
 
-  function open(i) {
+  function reveal(i) {
     fold();
     lastFocus = document.activeElement;
     show(i);
     lb.hidden = false;
     document.documentElement.classList.add('lb-open');
     btnClose.focus();
-    // the viewer is a step in the history: Back (a mouse's back button, a phone's back gesture) shuts it
-    // instead of leaving the site
-    try { history.pushState({ viewer: true }, ''); } catch (e) {}
+  }
+
+  /* The viewer is a step in the history, named by its photo: Back (a mouse's back button, a phone's back gesture)
+     shuts it instead of leaving the site; Forward onto that step, or loading the page again on it, opens that photo
+     again, so no step is left that does nothing. */
+  function open(i) {
+    reveal(i);
+    try { history.pushState({ viewer: prints[idx].dataset.slug }, ''); } catch (e) {}
+  }
+  function reopen(slug) {
+    var i = prints.findIndex(function (p) { return p.dataset.slug === slug; });
+    if (i >= 0) reveal(i);
+    else try { history.replaceState(null, ''); } catch (e) {}  // the photo is gone, or a step of an older page
   }
 
   /* Shut by the person (닫기, Esc, a click beside the photo): go back over the viewer's step, and popstate shuts
-     it; with no such step (pushState refused), shut it here. */
+     it; with no such step (pushState refused), shut it here. Until that Back has landed a second 닫기 or click does
+     nothing: going back again would leave the site. */
+  var closing = false;
   function close() {
-    if (history.state && history.state.viewer) history.back();
-    else shut();
+    if (lb.hidden || closing) return;
+    if (history.state && history.state.viewer) {
+      closing = true;
+      history.back();
+      setTimeout(function () { if (closing) shut(); }, 1000);  // no popstate came: shut it here
+    } else {
+      shut();
+    }
   }
   window.addEventListener('popstate', function () {
-    if (!lb.hidden) shut();
+    var viewer = history.state && history.state.viewer;
+    if (!viewer) { if (!lb.hidden) shut(); }
+    else if (lb.hidden) reopen(viewer);
   });
-  // a page loaded again while the viewer was open keeps that step with nothing behind it: make it a plain one
-  try { if (history.state && history.state.viewer) history.replaceState(null, ''); } catch (e) {}
+  try { if (history.state && history.state.viewer) reopen(history.state.viewer); } catch (e) {}
 
   function shut() {
+    closing = false;
     lb.hidden = true;
     if (renewing) location.reload();  // a newer site came out while the viewer was open
     document.documentElement.classList.remove('lb-open');

@@ -211,9 +211,22 @@ class BuildTests(unittest.TestCase):
     def test_back_shuts_the_viewer(self):
         # text only: the behaviour is checked in a browser
         html = self.html()
-        for s in ("history.pushState({ viewer: true }, '')", "if (history.state && history.state.viewer) history.back();",
-                  "window.addEventListener('popstate', function () {\n    if (!lb.hidden) shut();"):
+        for s in ("history.pushState({ viewer: prints[idx].dataset.slug }, '')", "history.back();",
+                  "window.addEventListener('popstate', function () {"):
             self.assertIn(s, html)
+
+    def test_a_second_close_does_not_leave_the_site(self):
+        # a double click on 닫기 or beside the photo: the first goes back over the viewer's step, the second must not go
+        # back again (that would leave the site)
+        html = self.html()
+        self.assertIn("if (lb.hidden || closing) return;", html)
+        self.assertRegex(html, r"function shut\(\) \{[^}]*closing = false;")
+
+    def test_the_viewer_step_opens_its_photo_again(self):
+        # Forward onto the viewer's step, or loading the page again on it, opens that photo: no step does nothing
+        html = self.html()
+        self.assertIn("else if (lb.hidden) reopen(viewer);", html)
+        self.assertIn("if (history.state && history.state.viewer) reopen(history.state.viewer);", html)
 
     def test_room_meta_lies_on_its_side(self):
         # the name stands; "10점" and the span lie together as one line (no upright number beside a lying span)
